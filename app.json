@@ -1,21 +1,30 @@
 {
   "expo": {
-    "name": "1ayet",
+    "name": "1 Ayet",
     "slug": "1ayet",
     "version": "1.0.0",
+    "owner": "metinbiyik",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "1ayet",
+    "icon": "./assets/images/birayet.png",
+    "scheme": "birayet",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/birayet.png",
+      "bundleIdentifier": "dev.biyik.birayet",
+      "buildNumber": "1",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "mailto"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "dev.biyik.birayet",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#0D483E",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -28,15 +37,48 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#0D483E",
+          "image": "./assets/images/birayet.png",
+          "imageWidth": 120,
+          "dark": {
+            "backgroundColor": "#0A2A22"
+          }
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-widgets",
+        {
+          "groupIdentifier": "group.dev.biyik.birayet",
+          "enableAndroid": true,
+          "widgets": [
+            {
+              "name": "DailyVerseWidget",
+              "displayName": "Günün Ayeti",
+              "description": "Günün ayetini ve tefekkür duasını ana ekranınızda görüntüleyin.",
+              "supportedFamilies": ["systemSmall", "systemMedium", "systemLarge"],
+              "contentMarginsDisabled": false,
+              "android": {
+                "minWidth": 140,
+                "minHeight": 110,
+                "targetCellWidth": 2,
+                "targetCellHeight": 2,
+                "resizeMode": "both"
+              }
+            }
+          ]
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1b5c5ed-a02b-4271-aceb-c307b77944de"
+      }
     }
   }
 }
