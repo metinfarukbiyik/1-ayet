@@ -11,7 +11,6 @@
     "ios": {
       "icon": "./assets/images/birayet.png",
       "bundleIdentifier": "dev.biyik.birayet",
-      "buildNumber": "1",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "mailto"
