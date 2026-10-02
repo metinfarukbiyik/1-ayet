@@ -181,3 +181,4 @@ npx eas-cli@latest build --platform ios --profile production --auto-submit
 
 Bu proje manevi fayda gözetilerek özenle geliştirilmiştir.  
 Görüş, öneri ve geri bildirimleriniz için [metin@biyik.dev](mailto:metin@biyik.dev) adresinden doğrudan iletişime geçebilirsiniz.
+# 1-ayet
