@@ -104,7 +104,7 @@ export const StoryCard = forwardRef<View, StoryCardProps>(function StoryCard(
       <View style={styles.bottomBlock}>
         {/* Kicker Başlık */}
         <Text style={[styles.kicker, { color: theme.accent }]}>
-          {isFriday ? '🌸 CUMA GÜNÜNÜN AYETİ' : 'GÜNÜN AYETİ'}
+          {isFriday ? '🌸 CUMA GÜNÜNÜN AYETİ' : '1 Ayet - Günün Ayeti & Meal'}
         </Text>
 
         {/* Sure Başlığı ve Yaprak İkonu */}
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     fontSize: 12,
-    letterSpacing: 2,
+    letterSpacing: 0.6,
     fontWeight: '700',
     textAlign: 'left',
     marginBottom: 8,

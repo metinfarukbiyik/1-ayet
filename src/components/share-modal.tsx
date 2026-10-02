@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as MediaLibrary from 'expo-media-library';
+import { Asset, requestPermissionsAsync } from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { useState, type RefObject } from 'react';
 import {
@@ -55,16 +55,27 @@ export function ShareModal({
     }
   };
 
+  const toFileUri = (uri: string): string => {
+    if (uri.startsWith('file://') || uri.startsWith('data:') || uri.startsWith('content://')) {
+      return uri;
+    }
+    if (uri.startsWith('/')) {
+      return `file://${uri}`;
+    }
+    return uri;
+  };
+
   const captureImageUri = async (): Promise<string | null> => {
     if (!storyCardRef.current) {
       Alert.alert('Hata', 'Görsel henüz hazır değil, lütfen tekrar deneyin.');
       return null;
     }
-    return await captureRef(storyCardRef.current, {
+    const uri = await captureRef(storyCardRef.current, {
       format: 'png',
       quality: 1,
       result: 'tmpfile',
     });
+    return typeof uri === 'string' && uri.length > 0 ? toFileUri(uri) : null;
   };
 
   // Doğrudan kullanıcının Fotoğraflar (Galeri / Camera Roll) kütüphanesine kaydet
@@ -81,12 +92,12 @@ export function ShareModal({
         return;
       }
 
-      const permissionResponse = await MediaLibrary.requestPermissionsAsync();
-      if (permissionResponse.status === 'granted') {
-        await MediaLibrary.saveToLibraryAsync(uri);
-        Alert.alert('Kaydedildi 🖼️', 'Günün ayeti Fotoğraflar uygulamanıza başarıyla kaydedildi.');
-        onClose();
-      } else {
+      // Yalnızca kaydetme (Add Photos Only) izni yeterlidir; tüm galeriyi okumaya gerek yoktur.
+      const permissionResponse = await requestPermissionsAsync(true, ['photo']);
+      const canSave =
+        permissionResponse.status === 'granted' || permissionResponse.accessPrivileges === 'limited';
+
+      if (!canSave) {
         if (!permissionResponse.canAskAgain) {
           Alert.alert(
             'Fotoğraf Erişimi Gerekli',
@@ -98,7 +109,12 @@ export function ShareModal({
             'Fotoğraflar erişim izni verilmediği için görsel kaydedilemedi.'
           );
         }
+        return;
       }
+
+      await Asset.create(uri);
+      Alert.alert('Kaydedildi 🖼️', 'Günün ayeti Fotoğraflar uygulamanıza başarıyla kaydedildi.');
+      onClose();
     } catch (error) {
       console.error('Fotoğraflara kaydedilirken hata:', error);
       Alert.alert('Hata', 'Görsel Fotoğraflara kaydedilirken bir sorun oluştu.');
@@ -136,37 +152,6 @@ export function ShareModal({
     } catch (error) {
       console.error('Görsel paylaşılırken hata:', error);
       Alert.alert('Hata', 'Görsel paylaşılırken bir sorun oluştu.');
-    } finally {
-      setLoadingAction(null);
-    }
-  };
-
-  // Dosyalar veya iCloud Drive'a kaydetmek isteyenler için
-  const saveImageToFiles = async () => {
-    setLoadingAction('files');
-    try {
-      const uri = await captureImageUri();
-      if (!uri) return;
-
-      if (Platform.OS === 'web') {
-        downloadImageOnWeb(uri, `1ayet-${verse.surahName}-${verse.ayahNumber}.png`);
-        Alert.alert('Başarılı', 'Görsel cihazınıza indirildi.');
-      } else {
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(uri, {
-            mimeType: 'image/png',
-            dialogTitle: 'Dosyalara Kaydet',
-            UTI: 'public.png',
-          });
-        } else {
-          Alert.alert('Hata', 'Cihazınızda dosya paylaşımı desteklenmiyor.');
-        }
-      }
-      onClose();
-    } catch (error) {
-      console.error('Dosyalara kaydedilirken hata:', error);
-      Alert.alert('Hata', 'Görsel dosyalara kaydedilirken bir sorun oluştu.');
     } finally {
       setLoadingAction(null);
     }
@@ -282,33 +267,6 @@ export function ShareModal({
                 </Text>
                 <Text style={[styles.optionDesc, { color: theme.textSecondary }]}>
                   Ayet mealini ve sure künyesini metin olarak kopyala veya ilet
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-            </Pressable>
-
-            {/* 4. Dosyalara / iCloud Drive'a Aktar */}
-            <Pressable
-              disabled={loadingAction !== null}
-              style={({ pressed }) => [
-                styles.optionItem,
-                { backgroundColor: theme.card, borderColor: theme.cardBorder },
-                pressed && styles.pressed,
-              ]}
-              onPress={saveImageToFiles}>
-              <View style={[styles.optionIconBox, { backgroundColor: theme.border }]}>
-                {loadingAction === 'files' ? (
-                  <ActivityIndicator size="small" color={theme.text} />
-                ) : (
-                  <Ionicons name="folder-outline" size={22} color={theme.text} />
-                )}
-              </View>
-              <View style={styles.optionContent}>
-                <Text style={[styles.optionTitle, { color: theme.text }]}>
-                  Dosyalar / iCloud Drive&apos;a Kaydet
-                </Text>
-                <Text style={[styles.optionDesc, { color: theme.textSecondary }]}>
-                  Görsel dosyasını Dosyalar uygulamasına veya harici depolamaya aktar
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />

@@ -50,7 +50,7 @@ Sosyal medya akışları ve karmaşık uygulamaların aksine, güne tek bir ayet
 ### 6. 🖼️ 9:16 Dikey Hikaye Kartı & Doğrudan Fotoğraflara Kaydetme
 - Ayeti sosyal medyada paylaşmak isteyenler için zarif bir 9:16 dikey hikaye kartı üretilir (Instagram Hikaye, WhatsApp Durum uyumlu).
 - **Fotoğraflara Kaydet:** Görseli doğrudan iPhone Fotoğraflar (Camera Roll) albümünüze yüksek çözünürlükte kaydeder (`expo-media-library`).
-- Dileyenler için doğrudan paylaşım sayfası veya dosya sistemine aktarma seçenekleri mevcuttur.
+- Dileyenler için Instagram Hikaye / WhatsApp Durum uyumlu görsel paylaşım veya metin olarak iletme seçenekleri mevcuttur.
 
 ### 7. 🎨 8 Huzurlu Renk Teması & Yazı Boyutu Tercihi
 - Gözü yormayan manevi renk paletleri:

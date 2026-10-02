@@ -495,7 +495,7 @@ export default function HomeScreen() {
                   ? 'ÖNCEKİ AYET · RASTGELE'
                   : isFriday
                   ? '🌸 CUMA GÜNÜNÜN AYETİ'
-                  : 'GÜNÜN AYETİ'}
+                  : '1 Ayet - Günün Ayeti & Meal'}
               </Text>
             </View>
 
@@ -936,7 +936,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     fontSize: 12,
-    letterSpacing: 2,
+    letterSpacing: 0.6,
     fontWeight: '700',
     textAlign: 'left',
   },
@@ -1023,10 +1023,13 @@ const styles = StyleSheet.create({
   },
   offscreenCapture: {
     position: 'absolute',
-    left: -9999,
-    top: -9999,
+    left: 0,
+    top: 0,
     width: 540,
     height: 960,
+    opacity: 0,
+    zIndex: -1,
+    pointerEvents: 'none',
     overflow: 'hidden',
   },
 });

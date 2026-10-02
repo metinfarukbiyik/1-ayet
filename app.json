@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "1 Ayet",
+    "name": "1 Ayet - Günün Ayeti & Meal",
     "slug": "1ayet",
     "version": "1.0.0",
     "owner": "metinbiyik",
@@ -11,7 +11,7 @@
     "ios": {
       "icon": "./assets/images/birayet.png",
       "bundleIdentifier": "dev.biyik.birayet",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "mailto"
