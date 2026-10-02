@@ -32,44 +32,32 @@ export type DailyVerseWidgetProps = {
   prayerTheme: string;
 };
 
-const DEFAULT_PROPS: DailyVerseWidgetProps = {
-  surahName: 'Fâtiha',
-  surahNumber: 1,
-  ayahNumber: 2,
-  juz: 1,
-  meaning: 'Hamd, Âlemlerin Rabbi olan Allah’a mahsustur.',
-  dateLabel: 'Günün Ayeti',
-  isFriday: false,
-  prayer: 'Hamdolsun bizi yaratan, yaşatan ve hidayet bahşeden Rabbimize.',
-  prayerTheme: 'Şükür ve Hamd',
-};
-
-const widgetBackground = containerBackground(
-  {
-    type: 'linearGradient',
-    colors: ['#0B3D34', '#07241E'],
-    startPoint: { x: 0, y: 0 },
-    endPoint: { x: 1, y: 1 },
-  },
-  'widget'
-);
-
 export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
   'DailyVerseWidget',
   (rawProps, context: WidgetEnvironment) => {
     'widget';
 
     const p = {
-      surahName: rawProps?.surahName ?? DEFAULT_PROPS.surahName,
-      surahNumber: rawProps?.surahNumber ?? DEFAULT_PROPS.surahNumber,
-      ayahNumber: rawProps?.ayahNumber ?? DEFAULT_PROPS.ayahNumber,
-      juz: rawProps?.juz ?? DEFAULT_PROPS.juz,
-      meaning: rawProps?.meaning ?? DEFAULT_PROPS.meaning,
-      dateLabel: rawProps?.dateLabel ?? DEFAULT_PROPS.dateLabel,
+      surahName: rawProps?.surahName || 'Fâtiha',
+      surahNumber: rawProps?.surahNumber || 1,
+      ayahNumber: rawProps?.ayahNumber || 2,
+      juz: rawProps?.juz || 1,
+      meaning: rawProps?.meaning || 'Hamd, Âlemlerin Rabbi olan Allah’a mahsustur.',
+      dateLabel: rawProps?.dateLabel || 'Günün Ayeti',
       isFriday: Boolean(rawProps?.isFriday),
-      prayer: rawProps?.prayer ?? DEFAULT_PROPS.prayer,
-      prayerTheme: rawProps?.prayerTheme ?? DEFAULT_PROPS.prayerTheme,
+      prayer: rawProps?.prayer || 'Hamdolsun bizi yaratan, yaşatan ve hidayet bahşeden Rabbimize.',
+      prayerTheme: rawProps?.prayerTheme || 'Şükür ve Hamd',
     };
+
+    const widgetBackground = containerBackground(
+      {
+        type: 'linearGradient',
+        colors: ['#0B3D34', '#07241E'],
+        startPoint: { x: 0, y: 0 },
+        endPoint: { x: 1, y: 1 },
+      },
+      'widget'
+    );
 
     // 1) KARE WIDGET (systemSmall - 2x2)
     if (context.widgetFamily === 'systemSmall') {

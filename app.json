@@ -11,6 +11,7 @@
     "ios": {
       "icon": "./assets/images/birayet.png",
       "bundleIdentifier": "dev.biyik.birayet",
+      "buildNumber": "2",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "mailto"
@@ -57,6 +58,10 @@
               "description": "Günün ayetini ve tefekkür duasını ana ekranınızda görüntüleyin.",
               "supportedFamilies": ["systemSmall", "systemMedium", "systemLarge"],
               "contentMarginsDisabled": false,
+              "ios": {
+                "supportedFamilies": ["systemSmall", "systemMedium", "systemLarge"],
+                "contentMarginsDisabled": false
+              },
               "android": {
                 "minWidth": 140,
                 "minHeight": 110,
