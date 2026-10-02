@@ -11,12 +11,14 @@
     "ios": {
       "icon": "./assets/images/birayet.png",
       "bundleIdentifier": "dev.biyik.birayet",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "mailto"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Günün ayetini ve hikaye kartını fotoğraflarınıza kaydetmek için izin gereklidir.",
+        "NSPhotoLibraryAddUsageDescription": "Günün ayetini ve hikaye kartını fotoğraflarınıza kaydetmek için izin gereklidir."
       }
     },
     "android": {
@@ -38,14 +40,21 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#0D483E",
-          "image": "./assets/images/birayet.png",
-          "imageWidth": 120,
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 175,
           "dark": {
             "backgroundColor": "#0A2A22"
           }
         }
       ],
       "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Günün ayetini ve hikaye kartını fotoğraflarınıza kaydetmek için izin gereklidir.",
+          "savePhotosPermission": "Günün ayetini fotoğraflarınıza kaydetmek için izin gereklidir."
+        }
+      ],
       [
         "expo-widgets",
         {

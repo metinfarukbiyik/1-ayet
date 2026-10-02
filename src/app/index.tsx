@@ -476,36 +476,10 @@ export default function HomeScreen() {
                       { backgroundColor: theme.surface, borderColor: theme.border },
                       pressed && styles.pressed,
                     ]}
-                    onPress={handleOpenJumaSurah}>
-                    <Ionicons name="book-outline" size={13} color={theme.accent} />
-                    <Text style={[styles.fridayActionPillText, { color: theme.accent }]}>
-                      Cum&apos;a Suresi 9. Ayet
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.fridayActionPill,
-                      { backgroundColor: theme.surface, borderColor: theme.border },
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() => setKehfModalVisible(true)}>
-                    <Ionicons name="sparkles-outline" size={13} color={theme.accent} />
-                    <Text style={[styles.fridayActionPillText, { color: theme.accent }]}>
-                      Kehf Fazileti
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.fridayActionPill,
-                      { backgroundColor: theme.surface, borderColor: theme.border },
-                      pressed && styles.pressed,
-                    ]}
                     onPress={handleShareFridayGreeting}>
-                    <Ionicons name="paper-plane-outline" size={13} color={theme.accent} />
-                    <Text style={[styles.fridayActionPillText, { color: theme.accent }]}>
-                      Tebrik Paylaş
+                    <Ionicons name="paper-plane-outline" size={14} color={theme.accent} />
+                    <Text style={[styles.fridayActionPillText, { color: theme.accent, fontWeight: '600' }]}>
+                      Cuma Tebriki Paylaş
                     </Text>
                   </Pressable>
                 </View>

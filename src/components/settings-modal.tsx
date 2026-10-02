@@ -32,7 +32,7 @@ type SettingsModalProps = {
   onSelectFontSize: (size: FontSizeSetting) => void;
 };
 
-type ViewMode = 'main' | 'themes' | 'feedback';
+type ViewMode = 'main' | 'themes' | 'fontSize' | 'notifications' | 'widget' | 'contact';
 
 type ThemeOption = {
   id: ThemeId;
@@ -194,6 +194,18 @@ export function SettingsModal({
     return ThemePalettes[themeId as keyof typeof ThemePalettes]?.name ?? 'Özel Tema';
   };
 
+  const getActiveFontSizeName = () => {
+    switch (fontSize) {
+      case 'small':
+        return 'Küçük (17 pt)';
+      case 'large':
+        return 'Büyük (26 pt)';
+      case 'medium':
+      default:
+        return 'Standart (21 pt)';
+    }
+  };
+
   const handleCopyEmail = async () => {
     try {
       if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -238,15 +250,25 @@ export function SettingsModal({
     const mailtoUrl = `mailto:${DEVELOPER_EMAIL}?subject=${subject}&body=${body}`;
 
     try {
-      await Linking.openURL(mailtoUrl);
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+        setShowEmailActions(false);
+      } else {
+        handleCopyEmail();
+        setShowEmailActions(false);
+        Alert.alert(
+          'E-posta Uygulaması Bulunamadı',
+          `Cihazınızda varsayılan bir e-posta istemcisi bulunamadı. E-posta adresi (${DEVELOPER_EMAIL}) panoya kopyalandı.`,
+          [{ text: 'Tamam' }]
+        );
+      }
     } catch {
-      // E-posta istemcisi bulunamadıysa veya açılamadıysa adresi panoya kopyala ve haber ver
-      await Clipboard.setStringAsync(DEVELOPER_EMAIL);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 3500);
+      handleCopyEmail();
+      setShowEmailActions(false);
       Alert.alert(
-        'E-posta Adresi Panoya Kopyalandı',
-        `Cihazınızda doğrudan açılacak bir e-posta istemcisi bulunamadığı için geliştirici adresi (${DEVELOPER_EMAIL}) panoya kopyalandı.\n\nKullandığınız e-posta uygulamasını (Gmail, Outlook vb.) açıp "Kime" kısmına yapıştırarak kolayca mesaj gönderebilirsiniz.`,
+        'E-posta Gönderilemedi',
+        `E-posta adresi (${DEVELOPER_EMAIL}) panoya kopyalandı.`,
         [{ text: 'Tamam' }]
       );
     }
@@ -278,7 +300,7 @@ export function SettingsModal({
                     Ayarlar
                   </Text>
                   <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                    Uygulama tercihleri ve iletişim
+                    Uygulama tercihleri ve araçlar
                   </Text>
                 </View>
               )}
@@ -292,14 +314,17 @@ export function SettingsModal({
             </Pressable>
           </View>
 
-          {/* 1. ANA MENÜ GÖRÜNÜMÜ */}
+          {/* ======================================================== */}
+          {/* 1. ANA MENÜ GÖRÜNÜMÜ                                     */}
+          {/* ======================================================== */}
           {currentView === 'main' && (
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollList}>
-              {/* Bölüm 1: Görünüm & Renkler */}
-              <Text style={[styles.sectionTitle, { color: theme.accent }]}>GÖRÜNÜM</Text>
+              {/* Bölüm: Görünüm & Okuma */}
+              <Text style={[styles.sectionTitle, { color: theme.accent }]}>GÖRÜNÜM & OKUMA</Text>
 
+              {/* Renk Teması Butonu */}
               <Pressable
                 style={({ pressed }) => [
                   styles.menuRow,
@@ -319,7 +344,6 @@ export function SettingsModal({
                 </View>
 
                 <View style={styles.menuRowRight}>
-                  {/* Seçili temanın renk rozeti */}
                   <View
                     style={[
                       styles.currentThemeDot,
@@ -330,264 +354,133 @@ export function SettingsModal({
                 </View>
               </Pressable>
 
-              {/* Yazı Boyutu Seçimi */}
-              <View
-                style={[
-                  styles.fontSizeContainer,
-                  { backgroundColor: theme.card, borderColor: theme.cardBorder },
-                ]}>
-                <View style={styles.fontSizeHeader}>
-                  <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
-                    <Ionicons name="text-outline" size={20} color={theme.text} />
-                  </View>
-                  <View style={styles.menuRowContent}>
-                    <Text style={[styles.menuRowTitle, { color: theme.text }]}>Yazı Boyutu</Text>
-                    <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
-                      {fontSize === 'small'
-                        ? 'Küçük'
-                        : fontSize === 'large'
-                        ? 'Büyük'
-                        : 'Standart (Önerilen)'}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.fontSizePillsRow}>
-                  {(
-                    [
-                      { id: 'small', label: 'Küçük', sample: 'Aa' },
-                      { id: 'medium', label: 'Standart', sample: 'Aa' },
-                      { id: 'large', label: 'Büyük', sample: 'Aa' },
-                    ] as const
-                  ).map((item) => {
-                    const isSelected = fontSize === item.id;
-                    return (
-                      <Pressable
-                        key={item.id}
-                        style={({ pressed }) => [
-                          styles.fontSizePill,
-                          {
-                            backgroundColor: isSelected ? theme.accent : theme.surface,
-                            borderColor: isSelected ? theme.accent : theme.border,
-                          },
-                          pressed && styles.pressed,
-                        ]}
-                        onPress={() => onSelectFontSize(item.id)}>
-                        <Text
-                          style={[
-                            styles.fontSizePillSample,
-                            {
-                              color: isSelected ? theme.accentContrast : theme.text,
-                              fontSize: item.id === 'small' ? 13 : item.id === 'medium' ? 16 : 19,
-                              fontWeight: isSelected ? '700' : '600',
-                            },
-                          ]}>
-                          {item.sample}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.fontSizePillLabel,
-                            {
-                              color: isSelected ? theme.accentContrast : theme.textSecondary,
-                              fontWeight: isSelected ? '700' : '500',
-                            },
-                          ]}>
-                          {item.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Günlük Bildirim & Hatırlatıcı Kartı */}
-              <View
-                style={[
-                  styles.fontSizeContainer,
-                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 12 },
-                ]}>
-                <View style={styles.fontSizeHeader}>
-                  <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
-                    <Ionicons
-                      name={notifSettings.enabled ? 'notifications' : 'notifications-outline'}
-                      size={20}
-                      color={notifSettings.enabled ? theme.accent : theme.text}
-                    />
-                  </View>
-                  <View style={styles.menuRowContent}>
-                    <Text style={[styles.menuRowTitle, { color: theme.text }]}>
-                      Günlük Ayet Hatırlatıcısı
-                    </Text>
-                    <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
-                      {notifSettings.enabled
-                        ? `Her gün saat ${String(notifSettings.hour).padStart(2, '0')}:${String(
-                            notifSettings.minute
-                          ).padStart(2, '0')}'da hatırlat`
-                        : 'Kapalı · Günlük manevi hatırlatıcı'}
-                    </Text>
-                  </View>
-
-                  <Pressable
-                    hitSlop={8}
-                    style={({ pressed }) => [
-                      styles.toggleSwitch,
-                      {
-                        backgroundColor: notifSettings.enabled ? theme.accent : theme.border,
-                      },
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={handleToggleNotification}>
-                    <View
-                      style={[
-                        styles.toggleThumb,
-                        {
-                          backgroundColor: notifSettings.enabled
-                            ? theme.accentContrast
-                            : theme.surface,
-                          transform: [{ translateX: notifSettings.enabled ? 16 : 0 }],
-                        },
-                      ]}
-                    />
-                  </Pressable>
-                </View>
-
-                {/* Hatırlatıcı Saat Seçenekleri */}
-                {notifSettings.enabled && (
-                  <View style={[styles.fontSizePillsRow, { marginTop: 12 }]}>
-                    {[
-                      { hour: 7, minute: 0, label: '07:00', desc: 'Sabah' },
-                      { hour: 9, minute: 0, label: '09:00', desc: 'Kuşluk' },
-                      { hour: 13, minute: 30, label: '13:30', desc: 'Öğle' },
-                      { hour: 21, minute: 0, label: '21:00', desc: 'Akşam' },
-                    ].map((item) => {
-                      const isTimeSelected =
-                        notifSettings.hour === item.hour && notifSettings.minute === item.minute;
-                      return (
-                        <Pressable
-                          key={item.label}
-                          style={({ pressed }) => [
-                            styles.timePill,
-                            {
-                              backgroundColor: isTimeSelected ? theme.accent : theme.surface,
-                              borderColor: isTimeSelected ? theme.accent : theme.border,
-                            },
-                            pressed && styles.pressed,
-                          ]}
-                          onPress={() => handleSelectNotificationTime(item.hour, item.minute)}>
-                          <Text
-                            style={[
-                              styles.timePillLabel,
-                              {
-                                color: isTimeSelected ? theme.accentContrast : theme.text,
-                                fontWeight: isTimeSelected ? '700' : '600',
-                              },
-                            ]}>
-                            {item.label}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.timePillDesc,
-                              {
-                                color: isTimeSelected
-                                  ? theme.accentContrast
-                                  : theme.textSecondary,
-                              },
-                            ]}>
-                            {item.desc}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-
-              {/* Ana Ekran Widget'ı Bilgi & Eşitleme Kartı */}
-              <View
-                style={[
-                  styles.fontSizeContainer,
-                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 12 },
-                ]}>
-                <View style={styles.fontSizeHeader}>
-                  <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
-                    <Ionicons name="apps-outline" size={20} color={theme.accent} />
-                  </View>
-                  <View style={styles.menuRowContent}>
-                    <Text style={[styles.menuRowTitle, { color: theme.text }]}>
-                      Ana Ekran Widget’ı
-                    </Text>
-                    <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
-                      Kare ve yatay geniş boyutlar
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={[styles.widgetInfoDesc, { color: theme.textSecondary }]}>
-                  Telefonunuzun ana ekranına basılı tutup (+) simgesine dokunarak «1 Ayet» widget’ını ekleyebilirsiniz. Günün ayetini ve tefekkür duasını doğrudan ana ekranınızda görüntüleyin.
-                </Text>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.syncWidgetBtn,
-                    { backgroundColor: theme.surface, borderColor: theme.border },
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => {
-                    const success = syncDailyVerseWidget();
-                    if (success) {
-                      Alert.alert(
-                        'Widget Senkronize Edildi',
-                        'Günün ayeti ve önümüzdeki günlerin zaman çizelgesi widget’a başarıyla aktarıldı.'
-                      );
-                    } else if (Platform.OS === 'web') {
-                      Alert.alert(
-                        'Bilgi',
-                        'Ana ekran widget’ı yalnızca iOS ve Android mobil cihazlarda desteklenmektedir.'
-                      );
-                    } else {
-                      Alert.alert(
-                        'Geliştirme Derlemesi Gerekli',
-                        'Ana ekran widget’ları native modül içerdiğinden Expo Go yerine Development Build veya cihazınıza kurulu uygulama derlemesinde çalışır.'
-                      );
-                    }
-                  }}>
-                  <Ionicons name="refresh" size={15} color={theme.accent} />
-                  <Text style={[styles.syncWidgetBtnText, { color: theme.accent }]}>
-                    Widget Verilerini Şimdi Senkronize Et
-                  </Text>
-                </Pressable>
-              </View>
-
-              {/* Bölüm 2: Geliştirici & Geri Bildirim */}
-              <Text style={[styles.sectionTitle, { color: theme.accent, marginTop: 22 }]}>
-                GELİŞTİRİCİYE ULAŞIN
-              </Text>
-
-              {/* Öneri & İstek Kartı */}
+              {/* Yazı Boyutu Butonu */}
               <Pressable
                 style={({ pressed }) => [
-                  styles.feedbackBanner,
+                  styles.menuRow,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 10 },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setCurrentView('fontSize')}>
+                <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
+                  <Ionicons name="text-outline" size={22} color={theme.text} />
+                </View>
+
+                <View style={styles.menuRowContent}>
+                  <Text style={[styles.menuRowTitle, { color: theme.text }]}>Yazı Boyutu</Text>
+                  <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
+                    {getActiveFontSizeName()}
+                  </Text>
+                </View>
+
+                <View style={styles.menuRowRight}>
+                  <Text style={[styles.menuBadgeText, { color: theme.accent, fontWeight: '700' }]}>
+                    Aa
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                </View>
+              </Pressable>
+
+              {/* Bölüm: Bildirim & Widget */}
+              <Text style={[styles.sectionTitle, { color: theme.accent, marginTop: 22 }]}>
+                BİLDİRİM & ARAÇLAR
+              </Text>
+
+              {/* Günlük Hatırlatıcı Butonu */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.menuRow,
                   { backgroundColor: theme.card, borderColor: theme.cardBorder },
                   pressed && styles.pressed,
                 ]}
-                onPress={() => setCurrentView('feedback')}>
+                onPress={() => setCurrentView('notifications')}>
                 <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
-                  <Ionicons name="heart-outline" size={22} color={theme.accent} />
+                  <Ionicons
+                    name={notifSettings.enabled ? 'notifications' : 'notifications-outline'}
+                    size={22}
+                    color={notifSettings.enabled ? theme.accent : theme.text}
+                  />
                 </View>
 
                 <View style={styles.menuRowContent}>
                   <Text style={[styles.menuRowTitle, { color: theme.text }]}>
-                    Öneri, İstek ve Görüşleriniz
+                    Günlük Hatırlatıcı
                   </Text>
                   <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
-                    Fikirleriniz bizim için çok kıymetli · Doğrudan yazın
+                    {notifSettings.enabled
+                      ? `Açık · Her gün ${String(notifSettings.hour).padStart(2, '0')}:${String(
+                          notifSettings.minute
+                        ).padStart(2, '0')}`
+                      : 'Kapalı · Günlük manevi hatırlatıcı'}
+                  </Text>
+                </View>
+
+                <View style={styles.menuRowRight}>
+                  {notifSettings.enabled && (
+                    <View style={[styles.activeStatusPill, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                      <Text style={[styles.activeStatusText, { color: theme.accent }]}>
+                        {`${String(notifSettings.hour).padStart(2, '0')}:${String(notifSettings.minute).padStart(2, '0')}`}
+                      </Text>
+                    </View>
+                  )}
+                  <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                </View>
+              </Pressable>
+
+              {/* Ana Ekran Widget'ı Butonu */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.menuRow,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 10 },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setCurrentView('widget')}>
+                <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
+                  <Ionicons name="apps-outline" size={22} color={theme.accent} />
+                </View>
+
+                <View style={styles.menuRowContent}>
+                  <Text style={[styles.menuRowTitle, { color: theme.text }]}>
+                    Ana Ekran Widget’ı
+                  </Text>
+                  <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
+                    Kurulum rehberi & anlık eşitleme
                   </Text>
                 </View>
 
                 <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
               </Pressable>
 
-              {/* Bölüm 3: Bilgi */}
+              {/* Bölüm: Geliştirici & İletişim */}
+              <Text style={[styles.sectionTitle, { color: theme.accent, marginTop: 22 }]}>
+                İLETİŞİM & DESTEK
+              </Text>
+
+              {/* İletişim / Öneri Butonu */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.menuRow,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setCurrentView('contact')}>
+                <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
+                  <Ionicons name="heart-outline" size={22} color={theme.accent} />
+                </View>
+
+                <View style={styles.menuRowContent}>
+                  <Text style={[styles.menuRowTitle, { color: theme.text }]}>
+                    Geliştiriciye Ulaşın & İletişim
+                  </Text>
+                  <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
+                    Öneri, görüş ve teşekkür mesajlarınız
+                  </Text>
+                </View>
+
+                <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+              </Pressable>
+
+              {/* Bilgi Kartı */}
               <View
                 style={[
                   styles.infoCard,
@@ -607,7 +500,9 @@ export function SettingsModal({
             </ScrollView>
           )}
 
-          {/* 2. İKİNCİ MENÜ: RENK TEMALARI */}
+          {/* ======================================================== */}
+          {/* 2. PENCERE: RENK TEMALARI                                */}
+          {/* ======================================================== */}
           {currentView === 'themes' && (
             <ScrollView
               showsVerticalScrollIndicator={false}
@@ -704,8 +599,405 @@ export function SettingsModal({
             </ScrollView>
           )}
 
-          {/* 3. İKİNCİ MENÜ: GELİŞTİRİCİYE ULAŞIN / ÖNERİ VE İSTEK */}
-          {currentView === 'feedback' && (
+          {/* ======================================================== */}
+          {/* 3. PENCERE: YAZI BOYUTU                                  */}
+          {/* ======================================================== */}
+          {currentView === 'fontSize' && (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollList}>
+              <View style={styles.subviewHeader}>
+                <Text style={[styles.subviewTitle, { color: theme.text, fontFamily: Fonts.serif }]}>
+                  Yazı Boyutu Tercihi
+                </Text>
+                <Text style={[styles.subviewSubtitle, { color: theme.textSecondary }]}>
+                  Ayet meali metinlerinin ekrandaki büyüklüğünü ayarlayın.
+                </Text>
+              </View>
+
+              {/* Canlı Önizleme Kartı */}
+              <View
+                style={[
+                  styles.previewVerseBox,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder },
+                ]}>
+                <Text style={[styles.previewKicker, { color: theme.accent }]}>CANLI ÖNİZLEME</Text>
+                <Text
+                  style={[
+                    styles.previewVerseText,
+                    {
+                      color: theme.text,
+                      fontFamily: Fonts.serif,
+                      fontSize: fontSize === 'small' ? 17 : fontSize === 'large' ? 26 : 21,
+                      lineHeight: fontSize === 'small' ? 27 : fontSize === 'large' ? 40 : 33,
+                    },
+                  ]}>
+                  &ldquo;Hamd, Âlemlerin Rabbi olan Allah’a mahsustur.&rdquo;
+                </Text>
+                <Text style={[styles.previewMeta, { color: theme.textSecondary }]}>
+                  — Fâtiha Suresi, 2. Ayet
+                </Text>
+              </View>
+
+              {/* Seçenek Listesi */}
+              <View style={[styles.optionsList, { marginTop: 14 }]}>
+                {[
+                  {
+                    id: 'small' as const,
+                    title: 'Küçük (17 pt)',
+                    desc: 'Daha fazla metin sığdırmak için kompakt ve zarif görünüm',
+                    sampleSize: 15,
+                  },
+                  {
+                    id: 'medium' as const,
+                    title: 'Standart (21 pt) · Önerilen',
+                    desc: 'En dengeli, rahat ve huzurlu günlük okuma deneyimi',
+                    sampleSize: 19,
+                  },
+                  {
+                    id: 'large' as const,
+                    title: 'Büyük (26 pt)',
+                    desc: 'Gözleri yormayan, ferah ve rahatça seçilebilen büyük harfler',
+                    sampleSize: 24,
+                  },
+                ].map((item) => {
+                  const isSelected = fontSize === item.id;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={({ pressed }) => [
+                        styles.optionItem,
+                        {
+                          backgroundColor: isSelected ? theme.card : 'transparent',
+                          borderColor: isSelected ? theme.accent : theme.border,
+                        },
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => onSelectFontSize(item.id)}>
+                      <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
+                        <Text
+                          style={{
+                            fontSize: item.sampleSize,
+                            fontWeight: '700',
+                            color: isSelected ? theme.accent : theme.text,
+                          }}>
+                          Aa
+                        </Text>
+                      </View>
+
+                      <View style={styles.optionContent}>
+                        <Text style={[styles.optionLabel, { color: theme.text }]}>
+                          {item.title}
+                        </Text>
+                        <Text style={[styles.optionDesc, { color: theme.textSecondary }]}>
+                          {item.desc}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.radioCircle,
+                          {
+                            borderColor: isSelected ? theme.accent : theme.border,
+                            backgroundColor: isSelected ? theme.accent : 'transparent',
+                          },
+                        ]}>
+                        {isSelected && <View style={styles.radioDot} />}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
+
+          {/* ======================================================== */}
+          {/* 4. PENCERE: GÜNLÜK HATIRLATICI                           */}
+          {/* ======================================================== */}
+          {currentView === 'notifications' && (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollList}>
+              <View style={styles.subviewHeader}>
+                <Text style={[styles.subviewTitle, { color: theme.text, fontFamily: Fonts.serif }]}>
+                  Günlük Hatırlatıcı
+                </Text>
+                <Text style={[styles.subviewSubtitle, { color: theme.textSecondary }]}>
+                  Günün koşturmacasında bir ayetlik manevi durak için bildirim alın.
+                </Text>
+              </View>
+
+              {/* Açma / Kapama Kartı */}
+              <View
+                style={[
+                  styles.fontSizeContainer,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder },
+                ]}>
+                <View style={styles.fontSizeHeader}>
+                  <View style={[styles.iconBox, { backgroundColor: theme.border }]}>
+                    <Ionicons
+                      name={notifSettings.enabled ? 'notifications' : 'notifications-outline'}
+                      size={20}
+                      color={notifSettings.enabled ? theme.accent : theme.text}
+                    />
+                  </View>
+                  <View style={styles.menuRowContent}>
+                    <Text style={[styles.menuRowTitle, { color: theme.text }]}>
+                      Hatırlatıcı Durumu
+                    </Text>
+                    <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
+                      {notifSettings.enabled
+                        ? `Her gün saat ${String(notifSettings.hour).padStart(2, '0')}:${String(
+                            notifSettings.minute
+                          ).padStart(2, '0')}'da aktiftir`
+                        : 'Şu anda kapalı'}
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.toggleSwitch,
+                      {
+                        backgroundColor: notifSettings.enabled ? theme.accent : theme.border,
+                      },
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={handleToggleNotification}>
+                    <View
+                      style={[
+                        styles.toggleThumb,
+                        {
+                          backgroundColor: notifSettings.enabled
+                            ? theme.accentContrast
+                            : theme.surface,
+                          transform: [{ translateX: notifSettings.enabled ? 16 : 0 }],
+                        },
+                      ]}
+                    />
+                  </Pressable>
+                </View>
+
+                {/* Hatırlatıcı Saat Seçenekleri */}
+                {notifSettings.enabled && (
+                  <View style={{ marginTop: 16 }}>
+                    <Text
+                      style={[
+                        styles.sectionTitle,
+                        { color: theme.accent, fontSize: 11, marginBottom: 8 },
+                      ]}>
+                      BİLDİRİM SAATİNİ SEÇİN
+                    </Text>
+                    <View style={styles.fontSizePillsRow}>
+                      {[
+                        { hour: 7, minute: 0, label: '07:00', desc: 'Sabah' },
+                        { hour: 9, minute: 0, label: '09:00', desc: 'Kuşluk' },
+                        { hour: 13, minute: 30, label: '13:30', desc: 'Öğle' },
+                        { hour: 21, minute: 0, label: '21:00', desc: 'Akşam' },
+                      ].map((item) => {
+                        const isTimeSelected =
+                          notifSettings.hour === item.hour && notifSettings.minute === item.minute;
+                        return (
+                          <Pressable
+                            key={item.label}
+                            style={({ pressed }) => [
+                              styles.timePill,
+                              {
+                                backgroundColor: isTimeSelected ? theme.accent : theme.surface,
+                                borderColor: isTimeSelected ? theme.accent : theme.border,
+                              },
+                              pressed && styles.pressed,
+                            ]}
+                            onPress={() => handleSelectNotificationTime(item.hour, item.minute)}>
+                            <Text
+                              style={[
+                                styles.timePillLabel,
+                                {
+                                  color: isTimeSelected ? theme.accentContrast : theme.text,
+                                  fontWeight: isTimeSelected ? '700' : '600',
+                                },
+                              ]}>
+                              {item.label}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.timePillDesc,
+                                {
+                                  color: isTimeSelected
+                                    ? theme.accentContrast
+                                    : theme.textSecondary,
+                                },
+                              ]}>
+                              {item.desc}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Bilgi Kutusu */}
+              <View
+                style={[
+                  styles.widgetInfoBox,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 14 },
+                ]}>
+                <Ionicons name="information-circle-outline" size={18} color={theme.accent} />
+                <Text style={[styles.widgetInfoBoxText, { color: theme.textSecondary }]}>
+                  Bildirimler tamamen cihazınız üzerinde planlanır. İnternet bağlantısı gerektirmez,
+                  pilinizi tüketmez ve verileriniz cihazınızda kalır.
+                </Text>
+              </View>
+            </ScrollView>
+          )}
+
+          {/* ======================================================== */}
+          {/* 5. PENCERE: ANA EKRAN WİDGET'I                           */}
+          {/* ======================================================== */}
+          {currentView === 'widget' && (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollList}>
+              <View style={styles.subviewHeader}>
+                <Text style={[styles.subviewTitle, { color: theme.text, fontFamily: Fonts.serif }]}>
+                  Ana Ekran Widget’ı
+                </Text>
+                <Text style={[styles.subviewSubtitle, { color: theme.textSecondary }]}>
+                  Günün ayetini ve tefekkür duasını telefonunuzun ana ekranında her an görüntüleyin.
+                </Text>
+              </View>
+
+              {/* Desteklenen Boyutlar */}
+              <View
+                style={[
+                  styles.widgetCard,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder },
+                ]}>
+                <Text style={[styles.previewKicker, { color: theme.accent }]}>
+                  DESTEKLENEN BOYUTLAR
+                </Text>
+
+                <View style={styles.widgetSizeRow}>
+                  <View style={[styles.widgetSizeIconBox, { backgroundColor: theme.surface }]}>
+                    <Ionicons name="square-outline" size={18} color={theme.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.widgetSizeTitle, { color: theme.text }]}>
+                      Küçük Kare (2x2)
+                    </Text>
+                    <Text style={[styles.widgetSizeDesc, { color: theme.textSecondary }]}>
+                      Sure adı, ayet meali ve duaya tek dokunuşla ulaşım
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.widgetSizeRow}>
+                  <View style={[styles.widgetSizeIconBox, { backgroundColor: theme.surface }]}>
+                    <Ionicons name="phone-landscape-outline" size={18} color={theme.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.widgetSizeTitle, { color: theme.text }]}>
+                      Yatay Geniş (4x2) · Önerilen
+                    </Text>
+                    <Text style={[styles.widgetSizeDesc, { color: theme.textSecondary }]}>
+                      Geniş okuma alanı, Cüz numarası ve doğrudan «Ayetin Duası» butonu
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.widgetSizeRow}>
+                  <View style={[styles.widgetSizeIconBox, { backgroundColor: theme.surface }]}>
+                    <Ionicons name="grid-outline" size={18} color={theme.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.widgetSizeTitle, { color: theme.text }]}>
+                      Büyük Kare (4x4)
+                    </Text>
+                    <Text style={[styles.widgetSizeDesc, { color: theme.textSecondary }]}>
+                      Tam ayet meali ve genişletilmiş tefekkür duası bölümü
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Nasıl Eklenir? */}
+              <View
+                style={[
+                  styles.widgetCard,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 12 },
+                ]}>
+                <Text style={[styles.previewKicker, { color: theme.accent }]}>NASIL EKLENİR?</Text>
+
+                <View style={styles.guideStepRow}>
+                  <View style={[styles.stepNumberBadge, { backgroundColor: theme.accent }]}>
+                    <Text style={[styles.stepNumberText, { color: theme.accentContrast }]}>1</Text>
+                  </View>
+                  <Text style={[styles.guideStepText, { color: theme.text }]}>
+                    Telefonunuzun ana ekranında boş bir alana basılı tutun.
+                  </Text>
+                </View>
+
+                <View style={styles.guideStepRow}>
+                  <View style={[styles.stepNumberBadge, { backgroundColor: theme.accent }]}>
+                    <Text style={[styles.stepNumberText, { color: theme.accentContrast }]}>2</Text>
+                  </View>
+                  <Text style={[styles.guideStepText, { color: theme.text }]}>
+                    Sol üst köşede beliren <Text style={{ fontWeight: '700' }}>(+) Ekle</Text>{' '}
+                    simgesine dokunun.
+                  </Text>
+                </View>
+
+                <View style={styles.guideStepRow}>
+                  <View style={[styles.stepNumberBadge, { backgroundColor: theme.accent }]}>
+                    <Text style={[styles.stepNumberText, { color: theme.accentContrast }]}>3</Text>
+                  </View>
+                  <Text style={[styles.guideStepText, { color: theme.text }]}>
+                    Listeden <Text style={{ fontWeight: '700' }}>1 Ayet</Text>&apos;i seçip
+                    dilediğiniz boyutu ana ekranınıza ekleyin.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Senkronizasyon Aksiyon Butonu */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryActionBtn,
+                  { backgroundColor: theme.accent, marginTop: 16 },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => {
+                  const success = syncDailyVerseWidget();
+                  if (success) {
+                    Alert.alert(
+                      'Widget Senkronize Edildi ✓',
+                      'Günün ayeti ve önümüzdeki günlerin zaman çizelgesi widget’a başarıyla aktarıldı.'
+                    );
+                  } else if (Platform.OS === 'web') {
+                    Alert.alert(
+                      'Bilgi',
+                      'Ana ekran widget’ı yalnızca mobil cihazlarda desteklenmektedir.'
+                    );
+                  } else {
+                    Alert.alert(
+                      'Bilgi',
+                      'Widget verileri senkronize edildi. Ana ekranınızdaki widget kısa süre içinde güncellenecektir.'
+                    );
+                  }
+                }}>
+                <Ionicons name="refresh" size={18} color={theme.accentContrast} />
+                <Text style={[styles.primaryActionBtnText, { color: theme.accentContrast }]}>
+                  Widget Verilerini Şimdi Senkronize Et
+                </Text>
+              </Pressable>
+            </ScrollView>
+          )}
+
+          {/* ======================================================== */}
+          {/* 6. PENCERE: İLETİŞİM & GERİ BİLDİRİM                     */}
+          {/* ======================================================== */}
+          {currentView === 'contact' && (
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollList}>
@@ -714,11 +1006,11 @@ export function SettingsModal({
                   Görüş ve Önerileriniz
                 </Text>
                 <Text style={[styles.subviewSubtitle, { color: theme.textSecondary }]}>
-                  Fikirlerinizi doğrudan geliştiriciye iletin
+                  Fikirlerinizi ve dualarınızı doğrudan geliştiriciye iletin.
                 </Text>
               </View>
 
-              {/* Değer Verildiğini Vurgulayan Samimi Mesaj Kartı */}
+              {/* Samimi Mesaj Kartı */}
               <View
                 style={[
                   styles.heartMessageCard,
@@ -727,20 +1019,21 @@ export function SettingsModal({
                 <View style={[styles.heartBadge, { backgroundColor: theme.border }]}>
                   <Ionicons name="sparkles" size={20} color={theme.accent} />
                 </View>
+
                 <Text style={[styles.heartTitle, { color: theme.text, fontFamily: Fonts.serif }]}>
                   Görüşleriniz Bizim İçin Çok Kıymetli
                 </Text>
                 <Text style={[styles.heartText, { color: theme.textSecondary }]}>
-                  1 Ayet&apos;i sade, huzurlu ve hayatınıza dokunan bir rehber haline getirmek için
-                  çalışıyoruz. Aklınıza gelen her yeni fikir, eksik gördüğünüz bir nokta veya meal
-                  önerisi bizim için son derece değerlidir.
+                  1 Ayet&apos;i sade, huzurlu ve hayatınıza dokunan bir manevi rehber haline
+                  getirmek için özenle geliştiriyoruz. Aklınıza gelen her yeni fikir, eksik gördüğünüz
+                  bir detay veya meal önerisi bizim için son derece kıymetlidir.
                 </Text>
                 <Text style={[styles.heartSubtext, { color: theme.accent }]}>
-                  İlettiğiniz her mesaj geliştirici tarafından bizzat ve özenle okunur.
+                  İlettiğiniz her mesaj geliştirici tarafından bizzat ve dikkatle okunur.
                 </Text>
               </View>
 
-              {/* Konu Başlıkları İlhamı */}
+              {/* İletişim Konuları */}
               <Text style={[styles.sectionTitle, { color: theme.accent, marginTop: 18 }]}>
                 PAYLAŞABİLECEĞİNİZ KONULAR
               </Text>
@@ -752,59 +1045,55 @@ export function SettingsModal({
                   <Text style={[styles.topicTagText, { color: theme.text }]}>🎨 Tasarım & Tema Fikirleri</Text>
                 </View>
                 <View style={[styles.topicTag, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-                  <Text style={[styles.topicTagText, { color: theme.text }]}>📖 Meal & İmla Düzeltmeleri</Text>
+                  <Text style={[styles.topicTagText, { color: theme.text }]}>📖 Meal & İmla İpuçları</Text>
                 </View>
                 <View style={[styles.topicTag, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-                  <Text style={[styles.topicTagText, { color: theme.text }]}>✨ Genel Düşünce ve Dua</Text>
+                  <Text style={[styles.topicTagText, { color: theme.text }]}>✨ Teşekkür & Selam</Text>
                 </View>
               </View>
 
-              {/* Aksiyon Butonu */}
+              {/* E-posta Gönderme Butonu */}
               <Text style={[styles.sectionTitle, { color: theme.accent, marginTop: 20 }]}>
-                İLETİŞİM
+                DOĞRUDAN ULAŞIN
               </Text>
 
-              {/* E-posta Gönder */}
               <Pressable
                 style={({ pressed }) => [
-                  styles.actionContactBtn,
-                  {
-                    backgroundColor: copied ? theme.card : theme.accent,
-                    borderColor: theme.accent,
-                    borderWidth: copied ? 1.5 : 0,
-                  },
+                  styles.primaryActionBtn,
+                  { backgroundColor: theme.accent },
                   pressed && styles.pressed,
                 ]}
                 onPress={() => setShowEmailActions(true)}>
+                <Ionicons name="mail" size={18} color={theme.accentContrast} />
+                <Text style={[styles.primaryActionBtnText, { color: theme.accentContrast }]}>
+                  E-posta ile Mesaj Gönder
+                </Text>
+              </Pressable>
+
+              {/* E-posta Adresi Kopyalama Butonu */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.secondaryActionBtn,
+                  {
+                    backgroundColor: copied ? theme.border : theme.surface,
+                    borderColor: copied ? theme.accent : theme.border,
+                    marginTop: 10,
+                  },
+                  pressed && styles.pressed,
+                ]}
+                onPress={handleCopyEmail}>
                 <Ionicons
-                  name={copied ? 'checkmark-circle' : 'mail'}
-                  size={20}
-                  color={copied ? theme.accent : theme.accentContrast}
+                  name={copied ? 'checkmark-circle' : 'copy-outline'}
+                  size={16}
+                  color={copied ? theme.accent : theme.text}
                 />
-                <View style={styles.actionBtnContent}>
-                  <Text
-                    style={[
-                      styles.actionBtnPrimaryText,
-                      { color: copied ? theme.text : theme.accentContrast },
-                    ]}>
-                    {copied ? 'E-posta Adresi Kopyalandı! ✓' : 'E-posta Gönder'}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.actionBtnPrimarySub,
-                      {
-                        color: copied ? theme.textSecondary : theme.accentContrast,
-                        opacity: copied ? 1 : 0.85,
-                      },
-                    ]}>
-                    {DEVELOPER_EMAIL}
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={copied ? theme.accent : theme.accentContrast}
-                />
+                <Text
+                  style={[
+                    styles.secondaryActionBtnText,
+                    { color: copied ? theme.accent : theme.text },
+                  ]}>
+                  {copied ? 'E-posta Kopyalandı (metin@biyik.dev)' : 'E-posta Adresini Kopyala'}
+                </Text>
               </Pressable>
             </ScrollView>
           )}
@@ -841,81 +1130,73 @@ export function SettingsModal({
                 </View>
 
                 <View style={styles.actionPromptButtons}>
-                  {/* Seçenek 1: E-posta Gönder */}
                   <Pressable
                     style={({ pressed }) => [
                       styles.actionPromptOptionBtn,
                       { backgroundColor: theme.accent },
                       pressed && styles.pressed,
                     ]}
-                    onPress={() => {
-                      setShowEmailActions(false);
-                      handleOpenEmail('Öneri & İstek');
-                    }}>
-                    <Ionicons name="paper-plane-outline" size={20} color={theme.accentContrast} />
-                    <View style={styles.actionPromptOptionContent}>
-                      <Text
-                        style={[
-                          styles.actionPromptOptionTitle,
-                          { color: theme.accentContrast },
-                        ]}>
-                        E-posta Gönder
-                      </Text>
-                      <Text
-                        style={[
-                          styles.actionPromptOptionDesc,
-                          { color: theme.accentContrast, opacity: 0.85 },
-                        ]}>
-                        Cihazınızdaki e-posta uygulamasını açar
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={theme.accentContrast} />
+                    onPress={() => handleOpenEmail('Öneri & İstek')}>
+                    <Ionicons name="bulb-outline" size={17} color={theme.accentContrast} />
+                    <Text
+                      style={[
+                        styles.actionPromptOptionText,
+                        { color: theme.accentContrast, fontWeight: '700' },
+                      ]}>
+                      Öneri veya İstek Paylaş
+                    </Text>
                   </Pressable>
 
-                  {/* Seçenek 2: E-posta Adresini Kopyala */}
                   <Pressable
                     style={({ pressed }) => [
                       styles.actionPromptOptionBtn,
-                      {
-                        backgroundColor: theme.card,
-                        borderColor: theme.cardBorder,
-                        borderWidth: 1,
-                      },
+                      { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 },
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => handleOpenEmail('Hata Bildirimi')}>
+                    <Ionicons name="bug-outline" size={17} color={theme.text} />
+                    <Text style={[styles.actionPromptOptionText, { color: theme.text }]}>
+                      Hata / Eksik Bildir
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionPromptOptionBtn,
+                      { backgroundColor: theme.card, borderColor: theme.cardBorder, borderWidth: 1 },
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => handleOpenEmail('Teşekkür & Selam')}>
+                    <Ionicons name="heart-outline" size={17} color={theme.text} />
+                    <Text style={[styles.actionPromptOptionText, { color: theme.text }]}>
+                      Teşekkür veya Selam İlet
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionPromptOptionBtn,
+                      { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 },
                       pressed && styles.pressed,
                     ]}
                     onPress={() => {
-                      setShowEmailActions(false);
                       handleCopyEmail();
+                      setShowEmailActions(false);
                     }}>
-                    <Ionicons name="copy-outline" size={20} color={theme.text} />
-                    <View style={styles.actionPromptOptionContent}>
-                      <Text style={[styles.actionPromptOptionTitle, { color: theme.text }]}>
-                        E-posta Adresini Kopyala
-                      </Text>
-                      <Text
-                        style={[
-                          styles.actionPromptOptionDesc,
-                          { color: theme.textSecondary },
-                        ]}>
-                        {DEVELOPER_EMAIL} panoya kopyalanır
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-                  </Pressable>
-
-                  {/* Vazgeç Butonu */}
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.actionPromptCancelBtn,
-                      { backgroundColor: theme.border },
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() => setShowEmailActions(false)}>
-                    <Text style={[styles.actionPromptCancelText, { color: theme.text }]}>
-                      Vazgeç
+                    <Ionicons name="copy-outline" size={17} color={theme.textSecondary} />
+                    <Text style={[styles.actionPromptOptionText, { color: theme.textSecondary }]}>
+                      Sadece Adresi Kopyala
                     </Text>
                   </Pressable>
                 </View>
+
+                <Pressable
+                  style={[styles.actionPromptCancelBtn, { borderColor: theme.border }]}
+                  onPress={() => setShowEmailActions(false)}>
+                  <Text style={[styles.actionPromptCancelText, { color: theme.textSecondary }]}>
+                    Vazgeç
+                  </Text>
+                </Pressable>
               </View>
             </View>
           )}
@@ -935,15 +1216,14 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%',
     maxWidth: 520,
-    maxHeight: '85%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
+    maxHeight: '88%',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 36,
     borderWidth: 1,
     borderBottomWidth: 0,
-    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -954,19 +1234,10 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 4,
-  },
-  backText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
   title: {
     fontSize: 22,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   subtitle: {
     fontSize: 13,
@@ -979,14 +1250,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  backText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   scrollList: {
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   sectionTitle: {
     fontSize: 11,
-    letterSpacing: 1.5,
     fontWeight: '700',
-    marginBottom: 10,
+    letterSpacing: 1.2,
+    marginBottom: 8,
+    marginLeft: 4,
   },
   menuRow: {
     flexDirection: 'row',
@@ -1002,97 +1284,67 @@ const styles = StyleSheet.create({
   menuRowTitle: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 2,
   },
   menuRowSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
+    marginTop: 2,
   },
   menuRowRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   currentThemeDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+  },
+  menuBadgeText: {
+    fontSize: 14,
+  },
+  activeStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  feedbackBanner: {
-    flexDirection: 'row',
+  activeStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  iconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 12,
+  },
+  pressed: {
+    opacity: 0.75,
   },
   subviewHeader: {
     marginBottom: 16,
   },
   subviewTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '700',
   },
   subviewSubtitle: {
     fontSize: 13,
+    marginTop: 4,
     lineHeight: 18,
   },
   optionsList: {
     gap: 10,
-    marginBottom: 16,
   },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 14,
+    padding: 14,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 12,
-  },
-  pressed: {
-    opacity: 0.8,
-  },
-  paletteSwatches: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 44,
-    height: 28,
-    position: 'relative',
-  },
-  swatch: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    position: 'absolute',
-    left: 0,
-    zIndex: 1,
-  },
-  swatchOverlap: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    position: 'absolute',
-    left: 12,
-    zIndex: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  swatchOverlap2: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    position: 'absolute',
-    left: 24,
-    zIndex: 3,
-  },
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   optionContent: {
     flex: 1,
@@ -1101,11 +1353,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 2,
   },
   optionLabel: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  optionDesc: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
   },
   badge: {
     paddingHorizontal: 6,
@@ -1116,10 +1372,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  optionDesc: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
   radioCircle: {
     width: 20,
     height: 20,
@@ -1129,220 +1381,73 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   radioDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#FFFFFF',
   },
-  infoCard: {
+  paletteSwatches: {
+    width: 38,
+    height: 38,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swatch: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  swatchOverlap: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    bottom: 2,
+    left: 2,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  swatchOverlap2: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    top: 2,
+    right: 2,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  previewVerseBox: {
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-  },
-  infoTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  infoTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  versionBadge: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  infoText: {
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  heartMessageCard: {
-    padding: 18,
-    borderRadius: 18,
-    borderWidth: 1,
     marginBottom: 8,
   },
-  heartBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  heartTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+  previewKicker: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
     marginBottom: 8,
   },
-  heartText: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 10,
+  previewVerseText: {
+    fontStyle: 'italic',
   },
-  heartSubtext: {
+  previewMeta: {
     fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '600',
-  },
-  topicTagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  topicTag: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  topicTagText: {
-    fontSize: 12,
+    marginTop: 8,
     fontWeight: '500',
-  },
-  actionContactBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    gap: 12,
-    marginBottom: 10,
-  },
-  actionBtnContent: {
-    flex: 1,
-  },
-  actionBtnPrimaryText: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  actionBtnPrimarySub: {
-    fontSize: 12,
-  },
-  copiedNotification: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 6,
-  },
-  copiedNotificationText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  actionPromptOverlay: {
-    ...StyleSheet.absoluteFill,
-    justifyContent: 'flex-end',
-    zIndex: 100,
-  },
-  actionPromptBackdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    zIndex: 1,
-  },
-  actionPromptCard: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 28,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
-    zIndex: 10,
-  },
-  actionPromptHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  actionPromptIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  actionPromptTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  actionPromptSub: {
-    fontSize: 13,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  actionPromptButtons: {
-    gap: 10,
-  },
-  actionPromptOptionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
-    gap: 12,
-  },
-  actionPromptOptionContent: {
-    flex: 1,
-  },
-  actionPromptOptionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  actionPromptOptionDesc: {
-    fontSize: 12,
-  },
-  actionPromptCancelBtn: {
-    paddingVertical: 13,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  actionPromptCancelText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   fontSizeContainer: {
-    padding: 16,
+    padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    marginTop: 10,
-    gap: 12,
   },
   fontSizeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  fontSizePillsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  fontSizePill: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 2,
-  },
-  fontSizePillSample: {
-    fontFamily: Fonts.serif,
-  },
-  fontSizePillLabel: {
-    fontSize: 11,
   },
   toggleSwitch: {
     width: 44,
@@ -1356,39 +1461,238 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
   },
+  fontSizePillsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   timePill: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 2,
+    alignItems: 'center',
   },
   timePillLabel: {
-    fontSize: 13,
+    fontSize: 14,
   },
   timePillDesc: {
     fontSize: 10,
-  },
-  widgetInfoDesc: {
-    fontSize: 13,
-    lineHeight: 18,
     marginTop: 2,
   },
-  syncWidgetBtn: {
+  widgetInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  widgetInfoBoxText: {
+    fontSize: 12,
+    lineHeight: 17,
+    flex: 1,
+  },
+  widgetCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  widgetSizeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  widgetSizeIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  widgetSizeTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  widgetSizeDesc: {
+    fontSize: 11,
+    marginTop: 1,
+    lineHeight: 15,
+  },
+  guideStepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  stepNumberBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  stepNumberText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  guideStepText: {
+    fontSize: 13,
+    lineHeight: 19,
+    flex: 1,
+  },
+  primaryActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+  },
+  primaryActionBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  secondaryActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  secondaryActionBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  heartMessageCard: {
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+  },
+  heartBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heartTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  heartText: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  heartSubtext: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  topicTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  topicTag: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  topicTagText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  infoCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+  },
+  infoTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  versionBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  infoText: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  actionPromptOverlay: {
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'flex-end',
+    zIndex: 100,
+  },
+  actionPromptBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  actionPromptCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    gap: 14,
+  },
+  actionPromptHeader: {
+    alignItems: 'center',
+    gap: 4,
+    paddingBottom: 4,
+  },
+  actionPromptIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  actionPromptTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  actionPromptSub: {
+    fontSize: 12,
+  },
+  actionPromptButtons: {
+    gap: 10,
+  },
+  actionPromptOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    gap: 8,
+  },
+  actionPromptOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  actionPromptCancelBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 4,
   },
-  syncWidgetBtnText: {
-    fontSize: 13,
+  actionPromptCancelText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });

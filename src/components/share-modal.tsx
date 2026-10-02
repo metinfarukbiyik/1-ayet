@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { useState, type RefObject } from 'react';
 import {
@@ -66,6 +67,47 @@ export function ShareModal({
     });
   };
 
+  // Doğrudan kullanıcının Fotoğraflar (Galeri / Camera Roll) kütüphanesine kaydet
+  const saveImageToPhotos = async () => {
+    setLoadingAction('photos');
+    try {
+      const uri = await captureImageUri();
+      if (!uri) return;
+
+      if (Platform.OS === 'web') {
+        downloadImageOnWeb(uri, `1ayet-${verse.surahName}-${verse.ayahNumber}.png`);
+        Alert.alert('Başarılı', 'Görsel cihazınıza indirildi.');
+        onClose();
+        return;
+      }
+
+      const permissionResponse = await MediaLibrary.requestPermissionsAsync();
+      if (permissionResponse.status === 'granted') {
+        await MediaLibrary.saveToLibraryAsync(uri);
+        Alert.alert('Kaydedildi 🖼️', 'Günün ayeti Fotoğraflar uygulamanıza başarıyla kaydedildi.');
+        onClose();
+      } else {
+        if (!permissionResponse.canAskAgain) {
+          Alert.alert(
+            'Fotoğraf Erişimi Gerekli',
+            'Görseli Fotoğraflar kütüphanenize kaydedebilmek için lütfen iPhone Ayarları > 1 Ayet kısmından Fotoğraflar iznini açın.'
+          );
+        } else {
+          Alert.alert(
+            'İzin Verilmedi',
+            'Fotoğraflar erişim izni verilmediği için görsel kaydedilemedi.'
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Fotoğraflara kaydedilirken hata:', error);
+      Alert.alert('Hata', 'Görsel Fotoğraflara kaydedilirken bir sorun oluştu.');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // Dikey görseli Instagram, WhatsApp vb. uygulamalarla paylaş (Share Sheet)
   const shareAsImage = async () => {
     setLoadingAction('image');
     try {
@@ -74,7 +116,10 @@ export function ShareModal({
 
       if (Platform.OS === 'web') {
         downloadImageOnWeb(uri, `1ayet-${verse.surahName}-${verse.ayahNumber}.png`);
-        Alert.alert('Görsel İndirildi', 'Hikaye görseli cihazınıza indirildi. WhatsApp veya Instagram üzerinden paylaşabilirsiniz.');
+        Alert.alert(
+          'Görsel İndirildi',
+          'Hikaye görseli cihazınıza indirildi. WhatsApp veya Instagram üzerinden paylaşabilirsiniz.'
+        );
       } else {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
@@ -96,8 +141,9 @@ export function ShareModal({
     }
   };
 
-  const saveImageToDevice = async () => {
-    setLoadingAction('save');
+  // Dosyalar veya iCloud Drive'a kaydetmek isteyenler için
+  const saveImageToFiles = async () => {
+    setLoadingAction('files');
     try {
       const uri = await captureImageUri();
       if (!uri) return;
@@ -110,17 +156,17 @@ export function ShareModal({
         if (isAvailable) {
           await Sharing.shareAsync(uri, {
             mimeType: 'image/png',
-            dialogTitle: 'Görseli Kaydet',
+            dialogTitle: 'Dosyalara Kaydet',
             UTI: 'public.png',
           });
         } else {
-          Alert.alert('Hata', 'Görsel kaydedilemedi.');
+          Alert.alert('Hata', 'Cihazınızda dosya paylaşımı desteklenmiyor.');
         }
       }
       onClose();
     } catch (error) {
-      console.error('Görsel kaydedilirken hata:', error);
-      Alert.alert('Hata', 'Görsel kaydedilirken bir sorun oluştu.');
+      console.error('Dosyalara kaydedilirken hata:', error);
+      Alert.alert('Hata', 'Görsel dosyalara kaydedilirken bir sorun oluştu.');
     } finally {
       setLoadingAction(null);
     }
@@ -152,7 +198,7 @@ export function ShareModal({
                 Ayeti Paylaş
               </Text>
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                Nasıl paylaşmak istersiniz?
+                Nasıl paylaşmak veya kaydetmek istersiniz?
               </Text>
             </View>
             <Pressable
@@ -165,29 +211,34 @@ export function ShareModal({
 
           {/* Seçenekler */}
           <View style={styles.optionsList}>
-            {/* Metin Paylaşımı */}
+            {/* 1. Fotoğraflara Kaydet (Öne Çıkarılmış) */}
             <Pressable
+              disabled={loadingAction !== null}
               style={({ pressed }) => [
                 styles.optionItem,
                 { backgroundColor: theme.card, borderColor: theme.cardBorder },
                 pressed && styles.pressed,
               ]}
-              onPress={shareAsText}>
-              <View style={[styles.optionIconBox, { backgroundColor: theme.border }]}>
-                <Ionicons name="chatbubble-ellipses-outline" size={22} color={theme.text} />
+              onPress={saveImageToPhotos}>
+              <View style={[styles.optionIconBox, { backgroundColor: theme.accent }]}>
+                {loadingAction === 'photos' ? (
+                  <ActivityIndicator size="small" color={theme.accentContrast} />
+                ) : (
+                  <Ionicons name="images" size={22} color={theme.accentContrast} />
+                )}
               </View>
               <View style={styles.optionContent}>
                 <Text style={[styles.optionTitle, { color: theme.text }]}>
-                  Metin Mesajı Olarak Paylaş
+                  Fotoğraflara Kaydet
                 </Text>
                 <Text style={[styles.optionDesc, { color: theme.textSecondary }]}>
-                  WhatsApp, SMS veya kopyalayarak doğrudan ilet
+                  9:16 dikey hikaye kartını doğrudan iPhone Fotoğraflar albümüne kaydet
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
             </Pressable>
 
-            {/* Dikey Görsel Paylaşımı */}
+            {/* 2. Dikey Görsel Olarak Paylaş */}
             <Pressable
               disabled={loadingAction !== null}
               style={({ pressed }) => [
@@ -208,13 +259,35 @@ export function ShareModal({
                   Dikey Görsel Olarak Paylaş
                 </Text>
                 <Text style={[styles.optionDesc, { color: theme.textSecondary }]}>
-                  Instagram Hikaye veya WhatsApp Durum için 9:16 görsel kart
+                  Instagram Hikaye veya WhatsApp Durum için görsel paylaşım menüsü
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
             </Pressable>
 
-            {/* Görseli Kaydet */}
+            {/* 3. Metin Paylaşımı */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.optionItem,
+                { backgroundColor: theme.card, borderColor: theme.cardBorder },
+                pressed && styles.pressed,
+              ]}
+              onPress={shareAsText}>
+              <View style={[styles.optionIconBox, { backgroundColor: theme.border }]}>
+                <Ionicons name="chatbubble-ellipses-outline" size={22} color={theme.text} />
+              </View>
+              <View style={styles.optionContent}>
+                <Text style={[styles.optionTitle, { color: theme.text }]}>
+                  Metin Mesajı Olarak Paylaş
+                </Text>
+                <Text style={[styles.optionDesc, { color: theme.textSecondary }]}>
+                  Ayet mealini ve sure künyesini metin olarak kopyala veya ilet
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            </Pressable>
+
+            {/* 4. Dosyalara / iCloud Drive'a Aktar */}
             <Pressable
               disabled={loadingAction !== null}
               style={({ pressed }) => [
@@ -222,20 +295,20 @@ export function ShareModal({
                 { backgroundColor: theme.card, borderColor: theme.cardBorder },
                 pressed && styles.pressed,
               ]}
-              onPress={saveImageToDevice}>
+              onPress={saveImageToFiles}>
               <View style={[styles.optionIconBox, { backgroundColor: theme.border }]}>
-                {loadingAction === 'save' ? (
+                {loadingAction === 'files' ? (
                   <ActivityIndicator size="small" color={theme.text} />
                 ) : (
-                  <Ionicons name="download-outline" size={22} color={theme.text} />
+                  <Ionicons name="folder-outline" size={22} color={theme.text} />
                 )}
               </View>
               <View style={styles.optionContent}>
                 <Text style={[styles.optionTitle, { color: theme.text }]}>
-                  Görseli Cihaza Kaydet
+                  Dosyalar / iCloud Drive&apos;a Kaydet
                 </Text>
                 <Text style={[styles.optionDesc, { color: theme.textSecondary }]}>
-                  Hikaye görselini fotoğraflarına veya indirilenlere kaydet
+                  Görsel dosyasını Dosyalar uygulamasına veya harici depolamaya aktar
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
