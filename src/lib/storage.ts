@@ -7,6 +7,7 @@ const THEME_MODE_KEY = '@1ayet_theme_mode_v1';
 const FONT_SIZE_KEY = '@1ayet_font_size_v1';
 const VERSE_NOTES_KEY = '@1ayet_verse_notes_v1';
 const NOTIFICATION_SETTINGS_KEY = '@1ayet_notification_settings_v1';
+const WIDGET_THEME_KEY = '@1ayet_widget_theme_v1';
 
 export type FontSizeSetting = 'small' | 'medium' | 'large';
 
@@ -213,6 +214,26 @@ export async function setNotificationSettings(settings: NotificationSettings): P
     await AsyncStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(settings));
   } catch (error) {
     console.error('Bildirim ayarları kaydedilirken hata oluştu:', error);
+  }
+}
+
+/* ==================== WİDGET TEMA AYARLARI ==================== */
+
+export async function getStoredWidgetThemeId(): Promise<string> {
+  try {
+    const raw = await AsyncStorage.getItem(WIDGET_THEME_KEY);
+    return raw || 'auto';
+  } catch (error) {
+    console.error('Widget tema tercihi yüklenirken hata oluştu:', error);
+    return 'auto';
+  }
+}
+
+export async function setStoredWidgetThemeId(themeId: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(WIDGET_THEME_KEY, themeId);
+  } catch (error) {
+    console.error('Widget tema tercihi kaydedilirken hata oluştu:', error);
   }
 }
 

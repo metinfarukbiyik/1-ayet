@@ -30,6 +30,13 @@ export type DailyVerseWidgetProps = {
   isFriday: boolean;
   prayer: string;
   prayerTheme: string;
+  bgStart?: string;
+  bgEnd?: string;
+  accentColor?: string;
+  textColor?: string;
+  secondaryTextColor?: string;
+  cardBgColor?: string;
+  badgeBgColor?: string;
 };
 
 export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
@@ -47,12 +54,19 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
       isFriday: Boolean(rawProps?.isFriday),
       prayer: rawProps?.prayer || 'Hamdolsun bizi yaratan, yaşatan ve hidayet bahşeden Rabbimize.',
       prayerTheme: rawProps?.prayerTheme || 'Şükür ve Hamd',
+      bgStart: rawProps?.bgStart || '#0B3D34',
+      bgEnd: rawProps?.bgEnd || '#06201B',
+      accentColor: rawProps?.accentColor || '#E8C488',
+      textColor: rawProps?.textColor || '#F6F1E8',
+      secondaryTextColor: rawProps?.secondaryTextColor || '#A1BFB8',
+      cardBgColor: rawProps?.cardBgColor || '#09322A',
+      badgeBgColor: rawProps?.badgeBgColor || '#124E43',
     };
 
     const widgetBackground = containerBackground(
       {
         type: 'linearGradient',
-        colors: ['#0B3D34', '#07241E'],
+        colors: [p.bgStart, p.bgEnd],
         startPoint: { x: 0, y: 0 },
         endPoint: { x: 1, y: 1 },
       },
@@ -75,7 +89,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
             <Text
               modifiers={[
                 font({ size: 11, weight: 'bold' }),
-                foregroundStyle('#E8C488'),
+                foregroundStyle(p.accentColor),
               ]}
             >
               {p.isFriday ? '🌸 Cuma' : '🌿 Bir Ayet'}
@@ -84,7 +98,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
             <Text
               modifiers={[
                 font({ size: 10, weight: 'semibold' }),
-                foregroundStyle('#B3CBC5'),
+                foregroundStyle(p.secondaryTextColor),
               ]}
             >
               {p.surahName} {p.ayahNumber}
@@ -95,7 +109,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
           <Text
             modifiers={[
               font({ size: 12, weight: 'regular', design: 'serif' }),
-              foregroundStyle('#F6F1E8'),
+              foregroundStyle(p.textColor),
               multilineTextAlignment('leading'),
               lineLimit(5),
               lineSpacing(2),
@@ -111,7 +125,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
             <Text
               modifiers={[
                 font({ size: 10, weight: 'semibold' }),
-                foregroundStyle('#E8C488'),
+                foregroundStyle(p.accentColor),
               ]}
             >
               🤲 Ayetin Duasını Oku
@@ -120,7 +134,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
             <Text
               modifiers={[
                 font({ size: 11, weight: 'bold' }),
-                foregroundStyle('#E8C488'),
+                foregroundStyle(p.accentColor),
               ]}
             >
               →
@@ -146,7 +160,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
             <Text
               modifiers={[
                 font({ size: 12, weight: 'bold' }),
-                foregroundStyle('#E8C488'),
+                foregroundStyle(p.accentColor),
               ]}
             >
               {p.isFriday ? '🌸 Bir Ayet · Cuma' : '🌿 Bir Ayet'}
@@ -154,7 +168,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
             <Text
               modifiers={[
                 font({ size: 12, weight: 'bold' }),
-                foregroundStyle('#FFFFFF'),
+                foregroundStyle(p.textColor),
               ]}
             >
               {` · ${p.surahName} Suresi`}
@@ -163,7 +177,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
             <Text
               modifiers={[
                 font({ size: 11, weight: 'medium' }),
-                foregroundStyle('#A1BFB8'),
+                foregroundStyle(p.secondaryTextColor),
               ]}
             >
               {p.dateLabel}
@@ -173,7 +187,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
           <Text
             modifiers={[
               font({ size: 11, weight: 'semibold' }),
-              foregroundStyle('#D1E4E0'),
+              foregroundStyle(p.secondaryTextColor),
             ]}
           >
             {`${p.surahName} Suresi, ${p.ayahNumber}. Ayet (${p.juz}. Cüz)`}
@@ -183,7 +197,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
           <Text
             modifiers={[
               font({ size: 14, weight: 'regular', design: 'serif' }),
-              foregroundStyle('#F6F1E8'),
+              foregroundStyle(p.textColor),
               multilineTextAlignment('leading'),
               lineLimit(6),
               lineSpacing(3),
@@ -203,7 +217,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
               spacing={4}
               modifiers={[
                 padding({ all: 10 }),
-                background('#09322A'),
+                background(p.cardBgColor),
                 cornerRadius(10),
               ]}
             >
@@ -211,7 +225,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
                 <Text
                   modifiers={[
                     font({ size: 10, weight: 'bold' }),
-                    foregroundStyle('#E8C488'),
+                    foregroundStyle(p.accentColor),
                   ]}
                 >
                   {`🤲 AYETİN DUASI · ${p.prayerTheme.toUpperCase()}`}
@@ -220,7 +234,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
                 <Text
                   modifiers={[
                     font({ size: 10, weight: 'bold' }),
-                    foregroundStyle('#E8C488'),
+                    foregroundStyle(p.accentColor),
                   ]}
                 >
                   Uygulamada Aç →
@@ -229,7 +243,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
               <Text
                 modifiers={[
                   font({ size: 11, weight: 'regular', design: 'serif' }),
-                  foregroundStyle('#EFE8DC'),
+                  foregroundStyle(p.textColor),
                   multilineTextAlignment('leading'),
                   lineLimit(3),
                   lineSpacing(2),
@@ -258,7 +272,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
           <Text
             modifiers={[
               font({ size: 11, weight: 'bold' }),
-              foregroundStyle('#E8C488'),
+              foregroundStyle(p.accentColor),
             ]}
           >
             {p.isFriday ? '🌸 Bir Ayet · Cuma' : '🌿 Bir Ayet'}
@@ -266,7 +280,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
           <Text
             modifiers={[
               font({ size: 11, weight: 'semibold' }),
-              foregroundStyle('#FFFFFF'),
+              foregroundStyle(p.textColor),
             ]}
           >
             {` · ${p.surahName} ${p.ayahNumber}. Ayet`}
@@ -275,7 +289,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
           <Text
             modifiers={[
               font({ size: 10, weight: 'medium' }),
-              foregroundStyle('#9BB7B0'),
+              foregroundStyle(p.secondaryTextColor),
             ]}
           >
             {p.dateLabel}
@@ -286,7 +300,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
         <Text
           modifiers={[
             font({ size: 13, weight: 'regular', design: 'serif' }),
-            foregroundStyle('#F6F1E8'),
+            foregroundStyle(p.textColor),
             multilineTextAlignment('leading'),
             lineLimit(3),
             lineSpacing(3),
@@ -302,7 +316,7 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
           <Text
             modifiers={[
               font({ size: 10, weight: 'regular' }),
-              foregroundStyle('#88A9A2'),
+              foregroundStyle(p.secondaryTextColor),
             ]}
           >
             {`${p.juz}. Cüz · Diyanet Meali`}
@@ -314,14 +328,14 @@ export const DailyVerseWidget = createWidget<DailyVerseWidgetProps>(
               spacing={4}
               modifiers={[
                 padding({ horizontal: 10, vertical: 4 }),
-                background('#124E43'),
+                background(p.badgeBgColor),
                 cornerRadius(12),
               ]}
             >
               <Text
                 modifiers={[
                   font({ size: 11, weight: 'semibold' }),
-                  foregroundStyle('#F6E2B8'),
+                  foregroundStyle(p.accentColor),
                 ]}
               >
                 🤲 Ayetin Duası

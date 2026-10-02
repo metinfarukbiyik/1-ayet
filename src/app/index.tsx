@@ -44,7 +44,7 @@ import {
   type FontSizeSetting,
   type SavedVerse,
 } from '@/lib/storage';
-import { syncDailyVerseWidget } from '@/lib/widget-sync';
+import { syncDailyVerseWidgetAsync } from '@/lib/widget-sync';
 
 type ActiveSlot = 'today' | 'previous' | 'saved';
 
@@ -122,7 +122,7 @@ export default function HomeScreen() {
     });
 
     // Ana ekran widget verilerini otomatik senkronize et
-    syncDailyVerseWidget();
+    syncDailyVerseWidgetAsync();
 
     return () => {
       mounted = false;

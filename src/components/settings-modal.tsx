@@ -17,7 +17,9 @@ import { Fonts, ThemePalettes, type ThemePalette } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import {
   getNotificationSettings,
+  getStoredWidgetThemeId,
   setNotificationSettings,
+  setStoredWidgetThemeId,
   type FontSizeSetting,
   type NotificationSettings,
   type ThemeId,
@@ -27,9 +29,11 @@ import {
   requestNotificationPermission,
   scheduleDailyVerseNotification,
   scheduleSpecificDateNotification,
-  sendTestNotification,
 } from '@/lib/notifications';
-import { syncDailyVerseWidget } from '@/lib/widget-sync';
+import { syncDailyVerseWidgetAsync } from '@/lib/widget-sync';
+import {
+  WidgetThemeConfigs,
+} from '@/constants/widget-themes';
 
 type SettingsModalProps = {
   visible: boolean;
@@ -69,7 +73,7 @@ export function SettingsModal({
     mode: 'daily',
   });
   const [notifTab, setNotifTab] = useState<'daily' | 'date'>('daily');
-  const [testingNotification, setTestingNotification] = useState(false);
+  const [widgetThemeId, setWidgetThemeId] = useState<string>('auto');
 
   const dateQuickOptions = useMemo(() => {
     const now = new Date();
@@ -98,6 +102,9 @@ export function SettingsModal({
       getNotificationSettings().then((s) => {
         setNotifSettings(s);
         if (s.mode) setNotifTab(s.mode);
+      });
+      getStoredWidgetThemeId().then((wid) => {
+        setWidgetThemeId(wid || 'auto');
       });
     }
   }, [visible]);
@@ -212,19 +219,14 @@ export function SettingsModal({
     [notifSettings]
   );
 
-  const handleTestNotification = async () => {
-    setTestingNotification(true);
-    const sent = await sendTestNotification();
-    setTestingNotification(false);
-    if (sent) {
+  const handleSelectWidgetTheme = async (id: string) => {
+    setWidgetThemeId(id);
+    await setStoredWidgetThemeId(id);
+    await syncDailyVerseWidgetAsync(7, id);
+    if (Platform.OS !== 'web') {
       Alert.alert(
-        'Test Bildirimi Gönderildi 🔔',
-        '2 saniye içinde telefonunuza deneme bildirimi ulaşacaktır. Uygulamayı simge durumuna alıp (arka plana atıp) kilit ekranınızı kontrol edebilirsiniz.'
-      );
-    } else {
-      Alert.alert(
-        'Bildirim İzni Gerekli',
-        'Test bildirimi için lütfen Ayarlar kısmından bildirim iznini verin.'
+        'Widget Rengi Güncellendi ✓',
+        'Ana ekran widget’ınızın renk paleti başarıyla güncellendi.'
       );
     }
   };
@@ -1125,21 +1127,6 @@ export function SettingsModal({
                 )}
               </View>
 
-              {/* Test Bildirimi Butonu */}
-              <Pressable
-                disabled={testingNotification}
-                style={({ pressed }) => [
-                  styles.testNotifBtn,
-                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 12 },
-                  pressed && styles.pressed,
-                ]}
-                onPress={handleTestNotification}>
-                <Ionicons name="paper-plane-outline" size={16} color={theme.accent} />
-                <Text style={[styles.testNotifBtnText, { color: theme.accent }]}>
-                  {testingNotification ? 'Gönderiliyor...' : 'Bildirimi Şimdi Test Et (2 sn sonra)'}
-                </Text>
-              </Pressable>
-
               {/* Bilgi Kutusu */}
               <View
                 style={[
@@ -1170,11 +1157,101 @@ export function SettingsModal({
                 </Text>
               </View>
 
-              {/* Desteklenen Boyutlar */}
+              {/* Widget Renk ve Görünümü */}
               <View
                 style={[
                   styles.widgetCard,
                   { backgroundColor: theme.card, borderColor: theme.cardBorder },
+                ]}>
+                <Text style={[styles.previewKicker, { color: theme.accent }]}>
+                  WİDGET RENK VE GÖRÜNÜMÜ
+                </Text>
+                <Text style={[styles.guideStepText, { color: theme.textSecondary, fontSize: 12, marginBottom: 4 }]}>
+                  Ana ekranınızın duvar kağıdına en çok yakışan rengi seçebilir veya uygulama temanızla otomatik senkronize tutabilirsiniz.
+                </Text>
+
+                {/* 1. Seçenek: Otomatik Senkron */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.widgetThemeOption,
+                    {
+                      backgroundColor: widgetThemeId === 'auto' ? theme.surface : theme.card,
+                      borderColor: widgetThemeId === 'auto' ? theme.accent : theme.cardBorder,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => handleSelectWidgetTheme('auto')}>
+                  <View
+                    style={[
+                      styles.widgetColorPreview,
+                      { backgroundColor: theme.accent, borderColor: theme.border },
+                    ]}>
+                    <Ionicons name="sparkles" size={14} color={theme.accentContrast} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.widgetThemeOptionTitle, { color: theme.text }]}>
+                      Uygulama Teması ile Aynı (Otomatik)
+                    </Text>
+                    <Text style={[styles.widgetThemeOptionDesc, { color: theme.textSecondary }]}>
+                      Uygulamada seçtiğiniz renk teması ne ise widget da onu takip eder
+                    </Text>
+                  </View>
+                  {widgetThemeId === 'auto' && (
+                    <Ionicons name="checkmark-circle" size={20} color={theme.accent} />
+                  )}
+                </Pressable>
+
+                {/* 8 Farklı Renk Seçeneği */}
+                {Object.values(WidgetThemeConfigs).map((cfg) => {
+                  const isSelected = widgetThemeId === cfg.id;
+                  return (
+                    <Pressable
+                      key={cfg.id}
+                      style={({ pressed }) => [
+                        styles.widgetThemeOption,
+                        {
+                          backgroundColor: isSelected ? theme.surface : theme.card,
+                          borderColor: isSelected ? theme.accent : theme.cardBorder,
+                        },
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => handleSelectWidgetTheme(cfg.id)}>
+                      <View
+                        style={[
+                          styles.widgetColorPreview,
+                          {
+                            backgroundColor: cfg.bgStart,
+                            borderColor: cfg.accentColor,
+                          },
+                        ]}>
+                        <View
+                          style={[
+                            styles.widgetColorPreviewDot,
+                            { backgroundColor: cfg.accentColor },
+                          ]}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.widgetThemeOptionTitle, { color: theme.text }]}>
+                          {cfg.name}
+                        </Text>
+                        <Text style={[styles.widgetThemeOptionDesc, { color: theme.textSecondary }]}>
+                          {cfg.description}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <Ionicons name="checkmark-circle" size={20} color={theme.accent} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Desteklenen Boyutlar */}
+              <View
+                style={[
+                  styles.widgetCard,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 12 },
                 ]}>
                 <Text style={[styles.previewKicker, { color: theme.accent }]}>
                   DESTEKLENEN BOYUTLAR
@@ -1268,12 +1345,12 @@ export function SettingsModal({
                   { backgroundColor: theme.accent, marginTop: 16 },
                   pressed && styles.pressed,
                 ]}
-                onPress={() => {
-                  const success = syncDailyVerseWidget();
+                onPress={async () => {
+                  const success = await syncDailyVerseWidgetAsync(7, widgetThemeId);
                   if (success) {
                     Alert.alert(
                       'Widget Senkronize Edildi ✓',
-                      'Günün ayeti ve önümüzdeki günlerin zaman çizelgesi widget’a başarıyla aktarıldı.'
+                      'Günün ayeti ve önümüzdeki günlerin zaman çizelgesi seçtiğiniz renkle widget’a başarıyla aktarıldı.'
                     );
                   } else if (Platform.OS === 'web') {
                     Alert.alert(
@@ -1888,19 +1965,36 @@ const styles = StyleSheet.create({
   dateOptionSub: {
     fontSize: 11,
   },
-  testNotifBtn: {
+  widgetThemeOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    gap: 8,
+    gap: 12,
   },
-  testNotifBtnText: {
+  widgetColorPreview: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  widgetColorPreviewDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  widgetThemeOptionTitle: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  widgetThemeOptionDesc: {
+    fontSize: 11,
+    marginTop: 1,
+    lineHeight: 15,
   },
   widgetInfoBox: {
     flexDirection: 'row',

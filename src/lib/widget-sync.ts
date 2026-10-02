@@ -1,11 +1,18 @@
 import { requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 
+import {
+  resolveWidgetTheme,
+  type WidgetThemeConfig,
+} from '@/constants/widget-themes';
 import { formatDateLabel, verseForDate } from '@/lib/daily-verse';
+import { getStoredThemeId, getStoredWidgetThemeId } from '@/lib/storage';
 import { getPrayerForVerse } from '@/lib/verse-prayers';
 import type { DailyVerseWidgetProps } from '@/widgets/daily-verse-widget';
 
 export type { DailyVerseWidgetProps };
+
+let cachedWidgetTheme: WidgetThemeConfig = resolveWidgetTheme('auto');
 
 export function isWidgetSupported(): boolean {
   if (Platform.OS === 'web') return false;
@@ -16,9 +23,13 @@ export function isWidgetSupported(): boolean {
   }
 }
 
-export function getWidgetPayloadForDate(date: Date): DailyVerseWidgetProps {
+export function getWidgetPayloadForDate(
+  date: Date,
+  themeConfig?: WidgetThemeConfig
+): DailyVerseWidgetProps {
   const verse = verseForDate(date);
   const prayerData = getPrayerForVerse(verse);
+  const theme = themeConfig || cachedWidgetTheme;
 
   return {
     surahName: verse.surahName,
@@ -30,24 +41,29 @@ export function getWidgetPayloadForDate(date: Date): DailyVerseWidgetProps {
     isFriday: date.getDay() === 5,
     prayer: prayerData.prayer,
     prayerTheme: prayerData.theme,
+    bgStart: theme.bgStart,
+    bgEnd: theme.bgEnd,
+    accentColor: theme.accentColor,
+    textColor: theme.textColor,
+    secondaryTextColor: theme.secondaryTextColor,
+    cardBgColor: theme.cardBgColor,
+    badgeBgColor: theme.badgeBgColor,
   };
 }
 
 /**
  * Günün ayetini ve önümüzdeki günlerin zaman çizelgesini (timeline)
- * ana ekran widget'ına senkronize eder.
- *
- * Expo Go veya Web gibi native modülün bulunmadığı ortamlarda
- * uygulamanın çökmemesi için korumalı (graceful) çalışır.
+ * seçilen renk paletiyle ana ekran widget'ına aktarır.
  */
-export function syncDailyVerseWidget(daysAhead: number = 7): boolean {
+export function syncDailyVerseWidget(
+  daysAhead: number = 7,
+  themeConfig?: WidgetThemeConfig
+): boolean {
   if (!isWidgetSupported()) {
     return false;
   }
 
   try {
-    // Native modül yalnızca mevcut olduğunda dinamik yüklenir
-    // (Böylece Expo Go veya Web ortamında import zamanı hataları önlenir)
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const widgetModule = require('@/widgets/daily-verse-widget');
     const DailyVerseWidget = widgetModule?.DailyVerseWidget;
@@ -55,8 +71,12 @@ export function syncDailyVerseWidget(daysAhead: number = 7): boolean {
       return false;
     }
 
+    if (themeConfig) {
+      cachedWidgetTheme = themeConfig;
+    }
+
     const today = new Date();
-    const todayPayload = getWidgetPayloadForDate(today);
+    const todayPayload = getWidgetPayloadForDate(today, themeConfig);
 
     // Anlık snapshot güncellemesi
     DailyVerseWidget.updateSnapshot(todayPayload);
@@ -81,7 +101,7 @@ export function syncDailyVerseWidget(daysAhead: number = 7): boolean {
 
       entries.push({
         date: futureDate,
-        props: getWidgetPayloadForDate(futureDate),
+        props: getWidgetPayloadForDate(futureDate, themeConfig),
       });
     }
 
@@ -89,6 +109,25 @@ export function syncDailyVerseWidget(daysAhead: number = 7): boolean {
     return true;
   } catch (error) {
     console.log('[WidgetSync] Widget timeline güncellenemedi:', error);
+    return false;
+  }
+}
+
+/**
+ * Kayıtlı kullanıcı temasını AsyncStorage'dan okuyup widget'ı senkronize eder.
+ */
+export async function syncDailyVerseWidgetAsync(
+  daysAhead: number = 7,
+  customWidgetThemeId?: string
+): Promise<boolean> {
+  try {
+    const widgetThemeId = customWidgetThemeId || (await getStoredWidgetThemeId());
+    const appThemeId = await getStoredThemeId();
+    const config = resolveWidgetTheme(widgetThemeId, appThemeId);
+    cachedWidgetTheme = config;
+    return syncDailyVerseWidget(daysAhead, config);
+  } catch (error) {
+    console.log('[WidgetSyncAsync] Hata:', error);
     return false;
   }
 }

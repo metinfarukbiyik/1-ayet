@@ -31,6 +31,9 @@ Sosyal medya akışları ve karmaşık uygulamaların aksine, güne tek bir ayet
 
 ### 4. 📱 iOS & Android Ana Ekran Widget Desteği (SwiftUI Tabanlı)
 - Uygulamayı açmadan dahi günün ayetini ve tefekkür duasını telefonunuzun ana ekranında görüntüleyin.
+- **🎨 Zengin Renk Seçenekleri & Tema Senkronizasyonu:**
+  - Widget rengini duvar kağıdınıza veya zevkinize göre özelleştirin!
+  - İster **"Uygulama Teması ile Aynı (Otomatik)"** moduyla uygulamanın temasını anlık takip etsin, ister **8 farklı renk seçeneğinden** (Zümrüt Yeşili, Kömür & Altın, Gece Mavisi, Klasik Parşömen, Sıcak Kum, Adaçayı, Mürdüm & Gül Kurusu veya Saf OLED Siyahı) birini kalıcı olarak belirleyin.
 - **3 Farklı Boyut Seçeneği:**
   - **Küçük Kare (systemSmall - 2x2):** Kompakt sure bilgisi, ayet meali ve doğrudan dua sayfasına yönlendirme.
   - **Yatay Geniş (systemMedium - 4x2 · Önerilen):** Geniş okuma alanı, cüz bilgisi ve tek dokunuşla *Ayetin Duası* butonu.
@@ -43,7 +46,6 @@ Sosyal medya akışları ve karmaşık uygulamaların aksine, güne tek bir ayet
 - **Hızlı Vakitler:** Sabah (07:00), Kuşluk (09:00), Öğle (13:30), İkindi (17:00), Akşam (21:00) ve Yatsı (22:30).
 - **Özel Bir Tarih Hatırlatıcısı:** Yalnızca günlük değil; dileyen kullanıcılar "Yarın", "Bu Cuma", "3 Gün Sonra" veya diledikleri bir gelecek vakit için özel tefekkür randevusu oluşturabilir.
 - **Yerel ve Güvenli (Local Notifications):** Bildirimler tamamen cihaz üzerinde yerel olarak planlanır; arka planda internet veya batarya harcamaz, verileriniz dışarı çıkmaz.
-- **Anlık Test Butonu:** Ayarlar içerisinden tek dokunuşla deneme bildirimi gönderilerek sistemin çalıştığı anında teyit edilebilir.
 
 ### 6. 🖼️ 9:16 Dikey Hikaye Kartı & Doğrudan Fotoğraflara Kaydetme
 - Ayeti sosyal medyada paylaşmak isteyenler için zarif bir 9:16 dikey hikaye kartı üretilir (Instagram Hikaye, WhatsApp Durum uyumlu).

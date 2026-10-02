@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useAppTheme } from '@/context/theme-context';
 import { initNotifications, scheduleDailyVerseNotification } from '@/lib/notifications';
 import { getNotificationSettings } from '@/lib/storage';
-import { syncDailyVerseWidget } from '@/lib/widget-sync';
+import { syncDailyVerseWidgetAsync } from '@/lib/widget-sync';
 
 function NavigationStack() {
   const { isDark, theme } = useAppTheme();
@@ -21,12 +21,12 @@ function NavigationStack() {
     });
 
     // Uygulama ilk açıldığında widget verilerini senkronize et
-    syncDailyVerseWidget();
+    syncDailyVerseWidgetAsync();
 
     // Uygulama her ön plana geldiğinde widget verilerini tazele
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
-        syncDailyVerseWidget();
+        syncDailyVerseWidgetAsync();
       }
     });
 

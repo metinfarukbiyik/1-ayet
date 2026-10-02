@@ -8,6 +8,13 @@ export type DailyVerseWidgetProps = {
   isFriday: boolean;
   prayer: string;
   prayerTheme: string;
+  bgStart?: string;
+  bgEnd?: string;
+  accentColor?: string;
+  textColor?: string;
+  secondaryTextColor?: string;
+  cardBgColor?: string;
+  badgeBgColor?: string;
 };
 
 // Web platformu için boş no-op widget nesnesi

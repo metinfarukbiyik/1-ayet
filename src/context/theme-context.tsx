@@ -3,6 +3,7 @@ import { useColorScheme as useDeviceColorScheme } from 'react-native';
 
 import { ThemePalettes, type PresetThemeKey, type ThemePalette } from '@/constants/theme';
 import { getStoredThemeId, setStoredThemeId, type ThemeId } from '@/lib/storage';
+import { syncDailyVerseWidgetAsync } from '@/lib/widget-sync';
 
 type ThemeContextType = {
   themeId: ThemeId;
@@ -57,6 +58,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setThemeId = (newId: ThemeId) => {
     setThemeIdState(newId);
     setStoredThemeId(newId);
+    // Uygulama teması değiştiğinde widget'ı otomatik senkronize et
+    syncDailyVerseWidgetAsync(7);
   };
 
   const { palette, isDark } = resolvePalette(themeId, deviceScheme === 'dark');
