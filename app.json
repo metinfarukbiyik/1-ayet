@@ -11,7 +11,7 @@
     "ios": {
       "icon": "./assets/images/birayet.png",
       "bundleIdentifier": "dev.biyik.birayet",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
           "mailto"
@@ -53,6 +53,13 @@
         {
           "photosPermission": "Günün ayetini ve hikaye kartını fotoğraflarınıza kaydetmek için izin gereklidir.",
           "savePhotosPermission": "Günün ayetini fotoğraflarınıza kaydetmek için izin gereklidir."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/birayet.png",
+          "color": "#0D483E"
         }
       ],
       [

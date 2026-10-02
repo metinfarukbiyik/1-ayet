@@ -20,6 +20,8 @@ export type NotificationSettings = {
   enabled: boolean;
   hour: number;
   minute: number;
+  mode?: 'daily' | 'date';
+  specificDate?: string; // YYYY-MM-DD
 };
 
 export type ThemeId =
@@ -197,6 +199,8 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
       enabled: Boolean(parsed.enabled),
       hour: typeof parsed.hour === 'number' ? parsed.hour : 9,
       minute: typeof parsed.minute === 'number' ? parsed.minute : 0,
+      mode: parsed.mode === 'date' ? 'date' : 'daily',
+      specificDate: typeof parsed.specificDate === 'string' ? parsed.specificDate : undefined,
     };
   } catch (error) {
     console.error('Bildirim ayarları yüklenirken hata oluştu:', error);

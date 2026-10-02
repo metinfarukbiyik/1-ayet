@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -22,6 +22,13 @@ import {
   type NotificationSettings,
   type ThemeId,
 } from '@/lib/storage';
+import {
+  cancelAllVerseNotifications,
+  requestNotificationPermission,
+  scheduleDailyVerseNotification,
+  scheduleSpecificDateNotification,
+  sendTestNotification,
+} from '@/lib/notifications';
 import { syncDailyVerseWidget } from '@/lib/widget-sync';
 
 type SettingsModalProps = {
@@ -59,32 +66,167 @@ export function SettingsModal({
     enabled: false,
     hour: 9,
     minute: 0,
+    mode: 'daily',
   });
+  const [notifTab, setNotifTab] = useState<'daily' | 'date'>('daily');
+  const [testingNotification, setTestingNotification] = useState(false);
+
+  const dateQuickOptions = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const fridayDiff = (5 - day + 7) % 7 || 7;
+    return [
+      { offset: 1, label: 'Yarın' },
+      { offset: fridayDiff, label: 'Bu Cuma' },
+      { offset: 3, label: '3 Gün Sonra' },
+      { offset: 7, label: '1 Hafta Sonra' },
+    ].map((item) => {
+      const target = new Date();
+      target.setDate(target.getDate() + item.offset);
+      return {
+        ...item,
+        dateText: target.toLocaleDateString('tr-TR', {
+          day: 'numeric',
+          month: 'short',
+        }),
+      };
+    });
+  }, []);
 
   useEffect(() => {
     if (visible) {
-      getNotificationSettings().then(setNotifSettings);
+      getNotificationSettings().then((s) => {
+        setNotifSettings(s);
+        if (s.mode) setNotifTab(s.mode);
+      });
     }
   }, [visible]);
 
   const handleToggleNotification = async () => {
-    const updated: NotificationSettings = {
-      ...notifSettings,
-      enabled: !notifSettings.enabled,
-    };
-    setNotifSettings(updated);
-    await setNotificationSettings(updated);
+    if (!notifSettings.enabled) {
+      const hasPerm = await requestNotificationPermission();
+      if (!hasPerm) {
+        Alert.alert(
+          'Bildirim İzni Gerekli',
+          'Günlük ayet hatırlatıcısını alabilmek için lütfen iPhone Ayarları > 1 Ayet kısmından Bildirimlere izin verin.'
+        );
+        return;
+      }
+      const updated: NotificationSettings = {
+        ...notifSettings,
+        enabled: true,
+      };
+      setNotifSettings(updated);
+      await setNotificationSettings(updated);
+      await scheduleDailyVerseNotification(updated.hour, updated.minute);
+      Alert.alert(
+        'Hatırlatıcı Açıldı 🌿',
+        `Her gün saat ${String(updated.hour).padStart(2, '0')}:${String(updated.minute).padStart(2, '0')} için günlük ayet bildirimi planlandı.`
+      );
+    } else {
+      const updated: NotificationSettings = {
+        ...notifSettings,
+        enabled: false,
+      };
+      setNotifSettings(updated);
+      await setNotificationSettings(updated);
+      await cancelAllVerseNotifications();
+      Alert.alert('Hatırlatıcı Kapatıldı', 'Planlanmış tüm ayet bildirimleri iptal edildi.');
+    }
   };
 
   const handleSelectNotificationTime = async (hour: number, minute: number) => {
     const updated: NotificationSettings = {
       ...notifSettings,
-      enabled: true,
       hour,
       minute,
     };
     setNotifSettings(updated);
     await setNotificationSettings(updated);
+    if (updated.enabled) {
+      const hasPerm = await requestNotificationPermission();
+      if (hasPerm) {
+        await scheduleDailyVerseNotification(hour, minute);
+      }
+    }
+  };
+
+  const handleAdjustHour = async (delta: number) => {
+    let next = notifSettings.hour + delta;
+    if (next > 23) next = 0;
+    if (next < 0) next = 23;
+    await handleSelectNotificationTime(next, notifSettings.minute);
+  };
+
+  const handleAdjustMinute = async (delta: number) => {
+    let next = notifSettings.minute + delta;
+    if (next > 59) next = 0;
+    if (next < 0) next = 55;
+    await handleSelectNotificationTime(notifSettings.hour, next);
+  };
+
+  const handleScheduleSpecificDate = useCallback(
+    async (dayOffset: number, label: string) => {
+      const hasPerm = await requestNotificationPermission();
+      if (!hasPerm) {
+        Alert.alert(
+          'Bildirim İzni Gerekli',
+          'Hatırlatıcı kurabilmek için lütfen Bildirimlere izin verin.'
+        );
+        return;
+      }
+
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + dayOffset);
+      targetDate.setHours(notifSettings.hour, notifSettings.minute, 0, 0);
+
+      const currentTime = Date.now();
+      if (targetDate.getTime() <= currentTime) {
+        Alert.alert('Geçersiz Vakit', 'Lütfen gelecekteki bir zaman dilimini seçin.');
+        return;
+      }
+
+      const ok = await scheduleSpecificDateNotification(
+        targetDate,
+        `Ayet Hatırlatıcısı (${label}) 🌿`
+      );
+      if (ok) {
+        const updated: NotificationSettings = {
+          ...notifSettings,
+          enabled: true,
+          mode: 'date',
+        };
+        setNotifSettings(updated);
+        await setNotificationSettings(updated);
+        const dateStr = targetDate.toLocaleDateString('tr-TR', {
+          day: 'numeric',
+          month: 'long',
+          weekday: 'long',
+        });
+        Alert.alert(
+          'Hatırlatıcı Planlandı 📅',
+          `${dateStr} saat ${String(notifSettings.hour).padStart(2, '0')}:${String(notifSettings.minute).padStart(2, '0')} için hatırlatıcı başarıyla kuruldu.`
+        );
+      }
+    },
+    [notifSettings]
+  );
+
+  const handleTestNotification = async () => {
+    setTestingNotification(true);
+    const sent = await sendTestNotification();
+    setTestingNotification(false);
+    if (sent) {
+      Alert.alert(
+        'Test Bildirimi Gönderildi 🔔',
+        '2 saniye içinde telefonunuza deneme bildirimi ulaşacaktır. Uygulamayı simge durumuna alıp (arka plana atıp) kilit ekranınızı kontrol edebilirsiniz.'
+      );
+    } else {
+      Alert.alert(
+        'Bildirim İzni Gerekli',
+        'Test bildirimi için lütfen Ayarlar kısmından bildirim iznini verin.'
+      );
+    }
   };
 
   const handleModalClose = () => {
@@ -712,7 +854,7 @@ export function SettingsModal({
           )}
 
           {/* ======================================================== */}
-          {/* 4. PENCERE: GÜNLÜK HATIRLATICI                           */}
+          {/* 4. PENCERE: GÜNLÜK VE TARİHLİ HATIRLATICI                */}
           {/* ======================================================== */}
           {currentView === 'notifications' && (
             <ScrollView
@@ -720,10 +862,10 @@ export function SettingsModal({
               contentContainerStyle={styles.scrollList}>
               <View style={styles.subviewHeader}>
                 <Text style={[styles.subviewTitle, { color: theme.text, fontFamily: Fonts.serif }]}>
-                  Günlük Hatırlatıcı
+                  Ayet Hatırlatıcısı
                 </Text>
                 <Text style={[styles.subviewSubtitle, { color: theme.textSecondary }]}>
-                  Günün koşturmacasında bir ayetlik manevi durak için bildirim alın.
+                  Günün koşturmacasında manevi bir durak için hatırlatıcı saatinizi ve tarihinizi serbestçe belirleyin.
                 </Text>
               </View>
 
@@ -747,10 +889,10 @@ export function SettingsModal({
                     </Text>
                     <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
                       {notifSettings.enabled
-                        ? `Her gün saat ${String(notifSettings.hour).padStart(2, '0')}:${String(
-                            notifSettings.minute
-                          ).padStart(2, '0')}'da aktiftir`
-                        : 'Şu anda kapalı'}
+                        ? `${notifTab === 'daily' ? 'Her gün' : 'Planlanan vakitte'} saat ${String(
+                            notifSettings.hour
+                          ).padStart(2, '0')}:${String(notifSettings.minute).padStart(2, '0')}`
+                        : 'Şu anda kapalı · Dokunarak açın'}
                     </Text>
                   </View>
 
@@ -778,22 +920,138 @@ export function SettingsModal({
                   </Pressable>
                 </View>
 
-                {/* Hatırlatıcı Saat Seçenekleri */}
+                {/* Mod Seçimi Sekmeleri (Her Gün vs Belirli Tarih) */}
                 {notifSettings.enabled && (
-                  <View style={{ marginTop: 16 }}>
+                  <View style={styles.notifTabRow}>
+                    <Pressable
+                      style={[
+                        styles.notifTabBtn,
+                        {
+                          backgroundColor: notifTab === 'daily' ? theme.accent : theme.surface,
+                          borderColor: notifTab === 'daily' ? theme.accent : theme.border,
+                        },
+                      ]}
+                      onPress={() => setNotifTab('daily')}>
+                      <Ionicons
+                        name="repeat-outline"
+                        size={15}
+                        color={notifTab === 'daily' ? theme.accentContrast : theme.text}
+                      />
+                      <Text
+                        style={[
+                          styles.notifTabBtnText,
+                          { color: notifTab === 'daily' ? theme.accentContrast : theme.text },
+                        ]}>
+                        Her Gün Düzenli
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      style={[
+                        styles.notifTabBtn,
+                        {
+                          backgroundColor: notifTab === 'date' ? theme.accent : theme.surface,
+                          borderColor: notifTab === 'date' ? theme.accent : theme.border,
+                        },
+                      ]}
+                      onPress={() => setNotifTab('date')}>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={15}
+                        color={notifTab === 'date' ? theme.accentContrast : theme.text}
+                      />
+                      <Text
+                        style={[
+                          styles.notifTabBtnText,
+                          { color: notifTab === 'date' ? theme.accentContrast : theme.text },
+                        ]}>
+                        Özel Bir Tarih
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+
+                {/* Dijital Saat & Dakika Serbest Seçici */}
+                {notifSettings.enabled && (
+                  <View style={styles.timePickerContainer}>
+                    <Text style={[styles.previewKicker, { color: theme.accent }]}>
+                      BİLDİRİM SAATİNİ BELİRLEYİN
+                    </Text>
+
+                    {/* Dijital Kadran ve Artırma / Azaltma Butonları */}
+                    <View style={styles.digitalClockCard}>
+                      {/* Saat Kutusu */}
+                      <View style={styles.clockUnitCol}>
+                        <Pressable
+                          hitSlop={6}
+                          style={[styles.clockStepBtn, { backgroundColor: theme.surface }]}
+                          onPress={() => handleAdjustHour(1)}>
+                          <Ionicons name="chevron-up" size={18} color={theme.accent} />
+                        </Pressable>
+
+                        <View style={[styles.clockDigitBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                          <Text style={[styles.clockDigitText, { color: theme.text }]}>
+                            {String(notifSettings.hour).padStart(2, '0')}
+                          </Text>
+                          <Text style={[styles.clockUnitLabel, { color: theme.textSecondary }]}>
+                            Saat
+                          </Text>
+                        </View>
+
+                        <Pressable
+                          hitSlop={6}
+                          style={[styles.clockStepBtn, { backgroundColor: theme.surface }]}
+                          onPress={() => handleAdjustHour(-1)}>
+                          <Ionicons name="chevron-down" size={18} color={theme.accent} />
+                        </Pressable>
+                      </View>
+
+                      {/* İki Nokta Üst Üste */}
+                      <Text style={[styles.clockColon, { color: theme.accent }]}>:</Text>
+
+                      {/* Dakika Kutusu */}
+                      <View style={styles.clockUnitCol}>
+                        <Pressable
+                          hitSlop={6}
+                          style={[styles.clockStepBtn, { backgroundColor: theme.surface }]}
+                          onPress={() => handleAdjustMinute(5)}>
+                          <Ionicons name="chevron-up" size={18} color={theme.accent} />
+                        </Pressable>
+
+                        <View style={[styles.clockDigitBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                          <Text style={[styles.clockDigitText, { color: theme.text }]}>
+                            {String(notifSettings.minute).padStart(2, '0')}
+                          </Text>
+                          <Text style={[styles.clockUnitLabel, { color: theme.textSecondary }]}>
+                            Dakika
+                          </Text>
+                        </View>
+
+                        <Pressable
+                          hitSlop={6}
+                          style={[styles.clockStepBtn, { backgroundColor: theme.surface }]}
+                          onPress={() => handleAdjustMinute(-5)}>
+                          <Ionicons name="chevron-down" size={18} color={theme.accent} />
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    {/* Hızlı Vakit Hapları */}
                     <Text
                       style={[
                         styles.sectionTitle,
-                        { color: theme.accent, fontSize: 11, marginBottom: 8 },
+                        { color: theme.accent, fontSize: 10, marginTop: 14, marginBottom: 6 },
                       ]}>
-                      BİLDİRİM SAATİNİ SEÇİN
+                      HIZLI VAKİT SEÇENEKLERİ
                     </Text>
-                    <View style={styles.fontSizePillsRow}>
+                    <View style={styles.quickTimeGrid}>
                       {[
-                        { hour: 7, minute: 0, label: '07:00', desc: 'Sabah' },
-                        { hour: 9, minute: 0, label: '09:00', desc: 'Kuşluk' },
-                        { hour: 13, minute: 30, label: '13:30', desc: 'Öğle' },
-                        { hour: 21, minute: 0, label: '21:00', desc: 'Akşam' },
+                        { hour: 7, minute: 0, label: '07:00', title: 'Sabah' },
+                        { hour: 9, minute: 0, label: '09:00', title: 'Kuşluk' },
+                        { hour: 13, minute: 30, label: '13:30', title: 'Öğle' },
+                        { hour: 17, minute: 0, label: '17:00', title: 'İkindi' },
+                        { hour: 21, minute: 0, label: '21:00', title: 'Akşam' },
+                        { hour: 22, minute: 30, label: '22:30', title: 'Yatsı' },
                       ].map((item) => {
                         const isTimeSelected =
                           notifSettings.hour === item.hour && notifSettings.minute === item.minute;
@@ -801,7 +1059,7 @@ export function SettingsModal({
                           <Pressable
                             key={item.label}
                             style={({ pressed }) => [
-                              styles.timePill,
+                              styles.quickTimePill,
                               {
                                 backgroundColor: isTimeSelected ? theme.accent : theme.surface,
                                 borderColor: isTimeSelected ? theme.accent : theme.border,
@@ -811,7 +1069,7 @@ export function SettingsModal({
                             onPress={() => handleSelectNotificationTime(item.hour, item.minute)}>
                             <Text
                               style={[
-                                styles.timePillLabel,
+                                styles.quickTimePillLabel,
                                 {
                                   color: isTimeSelected ? theme.accentContrast : theme.text,
                                   fontWeight: isTimeSelected ? '700' : '600',
@@ -821,14 +1079,14 @@ export function SettingsModal({
                             </Text>
                             <Text
                               style={[
-                                styles.timePillDesc,
+                                styles.quickTimePillDesc,
                                 {
                                   color: isTimeSelected
                                     ? theme.accentContrast
                                     : theme.textSecondary,
                                 },
                               ]}>
-                              {item.desc}
+                              {item.title}
                             </Text>
                           </Pressable>
                         );
@@ -836,7 +1094,51 @@ export function SettingsModal({
                     </View>
                   </View>
                 )}
+
+                {/* Belirli Bir Tarih Seçimi Modu */}
+                {notifSettings.enabled && notifTab === 'date' && (
+                  <View style={styles.datePickerContainer}>
+                    <Text style={[styles.previewKicker, { color: theme.accent }]}>
+                      HATIRLATMA GÜNÜNÜ SEÇİN
+                    </Text>
+                    <View style={styles.dateOptionsGrid}>
+                      {dateQuickOptions.map((item) => (
+                        <Pressable
+                          key={item.label}
+                          style={({ pressed }) => [
+                            styles.dateOptionBtn,
+                            { backgroundColor: theme.surface, borderColor: theme.border },
+                            pressed && styles.pressed,
+                          ]}
+                          onPress={() => handleScheduleSpecificDate(item.offset, item.label)}>
+                          <Ionicons name="calendar-outline" size={15} color={theme.accent} />
+                          <Text style={[styles.dateOptionTitle, { color: theme.text }]}>
+                            {item.label}
+                          </Text>
+                          <Text style={[styles.dateOptionSub, { color: theme.textSecondary }]}>
+                            {item.dateText}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
+
+              {/* Test Bildirimi Butonu */}
+              <Pressable
+                disabled={testingNotification}
+                style={({ pressed }) => [
+                  styles.testNotifBtn,
+                  { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 12 },
+                  pressed && styles.pressed,
+                ]}
+                onPress={handleTestNotification}>
+                <Ionicons name="paper-plane-outline" size={16} color={theme.accent} />
+                <Text style={[styles.testNotifBtnText, { color: theme.accent }]}>
+                  {testingNotification ? 'Gönderiliyor...' : 'Bildirimi Şimdi Test Et (2 sn sonra)'}
+                </Text>
+              </Pressable>
 
               {/* Bilgi Kutusu */}
               <View
@@ -844,10 +1146,9 @@ export function SettingsModal({
                   styles.widgetInfoBox,
                   { backgroundColor: theme.card, borderColor: theme.cardBorder, marginTop: 14 },
                 ]}>
-                <Ionicons name="information-circle-outline" size={18} color={theme.accent} />
+                <Ionicons name="shield-checkmark-outline" size={18} color={theme.accent} />
                 <Text style={[styles.widgetInfoBoxText, { color: theme.textSecondary }]}>
-                  Bildirimler tamamen cihazınız üzerinde planlanır. İnternet bağlantısı gerektirmez,
-                  pilinizi tüketmez ve verileriniz cihazınızda kalır.
+                  Bildirimler tamamen cihazınız üzerinde (Local Notifications) planlanır. Arka planda internet harcamaz, pilinizi tüketmez ve verileriniz cihazınızda güvende kalır.
                 </Text>
               </View>
             </ScrollView>
@@ -1479,6 +1780,127 @@ const styles = StyleSheet.create({
   timePillDesc: {
     fontSize: 10,
     marginTop: 2,
+  },
+  notifTabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  notifTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+  },
+  notifTabBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  timePickerContainer: {
+    marginTop: 16,
+  },
+  digitalClockCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  clockUnitCol: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  clockStepBtn: {
+    width: 36,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clockDigitBox: {
+    width: 80,
+    height: 70,
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clockDigitText: {
+    fontSize: 32,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  clockUnitLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: -2,
+  },
+  clockColon: {
+    fontSize: 32,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  quickTimeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickTimePill: {
+    width: '31%',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  quickTimePillLabel: {
+    fontSize: 13,
+  },
+  quickTimePillDesc: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+  datePickerContainer: {
+    marginTop: 16,
+  },
+  dateOptionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dateOptionBtn: {
+    width: '48%',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 2,
+  },
+  dateOptionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  dateOptionSub: {
+    fontSize: 11,
+  },
+  testNotifBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  testNotifBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   widgetInfoBox: {
     flexDirection: 'row',
